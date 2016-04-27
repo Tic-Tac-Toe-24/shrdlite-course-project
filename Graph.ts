@@ -78,7 +78,7 @@ function aStarSearch<Node> (
   }
 
   var compareNodes : ICompareFunction<Node> = function(first, second) {
-      return getF(firstNode) - getF(secondNode);
+      return getF(first) - getF(second);
   }
 
   while (openNodes.size() > 0) {
