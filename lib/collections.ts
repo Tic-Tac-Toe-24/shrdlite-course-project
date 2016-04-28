@@ -8,7 +8,7 @@
  * @namespace Top level namespace for collections, a TypeScript data structure library.
  */
 module collections {
-    
+
     var _hasOwnProperty = Object.prototype.hasOwnProperty;
     var has = function(obj: any, prop: any) {
         return _hasOwnProperty.call(obj, prop);
@@ -40,7 +40,7 @@ module collections {
 
     /**
      * Default function to compare element order.
-     * @function     
+     * @function
      */
     export function defaultCompare<T>(a: T, b: T): number {
         if (a < b) {
@@ -53,8 +53,8 @@ module collections {
     }
 
     /**
-     * Default function to test equality. 
-     * @function     
+     * Default function to test equality.
+     * @function
      */
     export function defaultEquals<T>(a: T, b: T): boolean {
         return a === b;
@@ -62,7 +62,7 @@ module collections {
 
     /**
      * Default function to convert an object to a string.
-     * @function     
+     * @function
      */
     export function defaultToString(item: any): string {
         if (item === null) {
@@ -77,7 +77,7 @@ module collections {
     }
 
     /**
-    * Joins all the properies of the object using the provided join string 
+    * Joins all the properies of the object using the provided join string
     */
     export function makeString<T>(item: T, join: string = ","): string {
         if (item === null) {
@@ -104,7 +104,7 @@ module collections {
 
     /**
      * Checks if the given argument is a function.
-     * @function     
+     * @function
      */
     export function isFunction(func: any): boolean {
         return (typeof func) === 'function';
@@ -168,7 +168,7 @@ module collections {
          * within the specified array.
          * @param {*} array the array in which to search the element.
          * @param {Object} item the element to search.
-         * @param {function(Object,Object):boolean=} equalsFunction optional function used to 
+         * @param {function(Object,Object):boolean=} equalsFunction optional function used to
          * check equality between 2 elements.
          * @return {number} the position of the first occurrence of the specified element
          * within the specified array, or -1 if not found.
@@ -189,7 +189,7 @@ module collections {
          * within the specified array.
          * @param {*} array the array in which to search the element.
          * @param {Object} item the element to search.
-         * @param {function(Object,Object):boolean=} equalsFunction optional function used to 
+         * @param {function(Object,Object):boolean=} equalsFunction optional function used to
          * check equality between 2 elements.
          * @return {number} the position of the last occurrence of the specified element
          * within the specified array or -1 if not found.
@@ -209,7 +209,7 @@ module collections {
          * Returns true if the specified array contains the specified element.
          * @param {*} array the array in which to search the element.
          * @param {Object} item the element to search.
-         * @param {function(Object,Object):boolean=} equalsFunction optional function to 
+         * @param {function(Object,Object):boolean=} equalsFunction optional function to
          * check equality between 2 elements.
          * @return {boolean} true if the specified array contains the specified element.
          */
@@ -222,7 +222,7 @@ module collections {
          * Removes the first ocurrence of the specified element from the specified array.
          * @param {*} array the array in which to search element.
          * @param {Object} item the element to search.
-         * @param {function(Object,Object):boolean=} equalsFunction optional function to 
+         * @param {function(Object,Object):boolean=} equalsFunction optional function to
          * check equality between 2 elements.
          * @return {boolean} true if the array changed after this call.
          */
@@ -240,9 +240,9 @@ module collections {
          * to the specified object.
          * @param {Array} array the array in which to determine the frequency of the element.
          * @param {Object} item the element whose frequency is to be determined.
-         * @param {function(Object,Object):boolean=} equalsFunction optional function used to 
+         * @param {function(Object,Object):boolean=} equalsFunction optional function used to
          * check equality between 2 elements.
-         * @return {number} the number of elements in the specified array 
+         * @return {number} the number of elements in the specified array
          * equal to the specified object.
          */
         export function frequency<T>(array: T[], item: T, equalsFunction?: collections.IEqualsFunction<T>): number {
@@ -260,11 +260,11 @@ module collections {
         /**
          * Returns true if the two specified arrays are equal to one another.
          * Two arrays are considered equal if both arrays contain the same number
-         * of elements, and all corresponding pairs of elements in the two 
-         * arrays are equal and are in the same order. 
+         * of elements, and all corresponding pairs of elements in the two
+         * arrays are equal and are in the same order.
          * @param {Array} array1 one array to be tested for equality.
          * @param {Array} array2 the other array to be tested for equality.
-         * @param {function(Object,Object):boolean=} equalsFunction optional function used to 
+         * @param {function(Object,Object):boolean=} equalsFunction optional function used to
          * check equality between elemements in the arrays.
          * @return {boolean} true if the two arrays are equal
          */
@@ -314,11 +314,11 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element present in this array 
+         * Executes the provided function once for each element present in this array
          * starting from index 0 to length - 1.
          * @param {Array} array The array in which to iterate.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element value, to break the iteration you can 
+         * invoked with one argument: the element value, to break the iteration you can
          * optionally return false.
          */
         export function forEach<T>(array: T[], callback: ILoopFunction<T>): void {
@@ -571,7 +571,7 @@ module collections {
          * @param {LinkedList} other the other list.
          * @param {function(Object,Object):boolean=} equalsFunction optional
          * function used to check if two elements are equal. If the elements in the lists
-         * are custom objects you should provide a function, otherwise 
+         * are custom objects you should provide a function, otherwise
          * the === operator is used to check equality between elements.
          * @return {boolean} true if this list is equal to the given list.
          */
@@ -636,7 +636,7 @@ module collections {
         /**
          * Executes the provided function once for each element present in this list in order.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element value, to break the iteration you can 
+         * invoked with one argument: the element value, to break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>): void {
@@ -650,7 +650,7 @@ module collections {
         }
 
         /**
-         * Reverses the order of the elements in this linked list (makes the last 
+         * Reverses the order of the elements in this linked list (makes the last
          * element first, and the first element last).
          */
         reverse(): void {
@@ -731,11 +731,11 @@ module collections {
                 next: null
             };
         }
-    } // End of linked list 
+    } // End of linked list
 
 
 
-    // Used internally by dictionary 
+    // Used internally by dictionary
     export interface IDictionaryPair<K, V>{
         key: K;
         value: V;
@@ -749,7 +749,7 @@ module collections {
          * @private
          */
         protected table: { [key: string]: IDictionaryPair<K, V> };
-        //: [key: K] will not work since indices can only by strings in javascript and typescript enforces this. 
+        //: [key: K] will not work since indices can only by strings in javascript and typescript enforces this.
 
         /**
          * Number of elements in the list.
@@ -767,7 +767,7 @@ module collections {
 
 
         /**
-         * Creates an empty dictionary. 
+         * Creates an empty dictionary.
          * @class <p>Dictionaries map keys to values; each key can map to at most one value.
          * This implementation accepts any kind of objects as keys.</p>
          *
@@ -888,10 +888,10 @@ module collections {
         }
 
         /**
-        * Executes the provided function once for each key-value pair 
+        * Executes the provided function once for each key-value pair
         * present in this dictionary.
         * @param {function(Object,Object):*} callback function to execute, it is
-        * invoked with two arguments: key and value. To break the iteration you can 
+        * invoked with two arguments: key and value. To break the iteration you can
         * optionally return false.
         */
         forEach(callback: (key: K, value: V) => any): void {
@@ -953,7 +953,7 @@ module collections {
 
     /**
      * This class is used by the LinkedDictionary Internally
-     * Has to be a class, not an interface, because it needs to have 
+     * Has to be a class, not an interface, because it needs to have
      * the 'unlink' function defined.
      */
     class LinkedDictionaryPair<K, V> implements IDictionaryPair<K, V> {
@@ -981,7 +981,7 @@ module collections {
         }
 
         /**
-         * Inserts the new node to the 'tail' of the list, updating the 
+         * Inserts the new node to the 'tail' of the list, updating the
          * neighbors, and moving 'this.tail' (the End of List indicator) that
          * to the end.
          */
@@ -1022,7 +1022,7 @@ module collections {
 
         /**
          * Removes the mapping for this key from this dictionary if it is present.
-         * Also, if a value is present for this key, the entry is removed from the 
+         * Also, if a value is present for this key, the entry is removed from the
          * insertion ordering.
          * @param {Object} key key whose mapping is to be removed from the
          * dictionary.
@@ -1037,7 +1037,7 @@ module collections {
                 return pair.value;
             }
             return undefined;
-        } 
+        }
 
         /**
         * Removes all mappings from this LinkedDictionary.
@@ -1051,7 +1051,7 @@ module collections {
 
         /**
          * Internal function used when updating an existing KeyValue pair.
-         * It places the new value indexed by key into the table, but maintains 
+         * It places the new value indexed by key into the table, but maintains
          * its place in the linked ordering.
          */
         private replace(oldPair: LinkedDictionaryPair<K, V>, newPair: LinkedDictionaryPair<K, V>) {
@@ -1082,7 +1082,7 @@ module collections {
          * Associates the specified value with the specified key in this dictionary.
          * If the dictionary previously contained a mapping for this key, the old
          * value is replaced by the specified value.
-         * Updating of a key that already exists maintains its place in the 
+         * Updating of a key that already exists maintains its place in the
          * insertion order into the map.
          * @param {Object} key key with which the specified value is to be
          * associated.
@@ -1101,7 +1101,7 @@ module collections {
 
             var k = '$' + this.toStr(key);
 
-            // If there is already an element for that key, we 
+            // If there is already an element for that key, we
             // keep it's place in the LinkedList
             if (!collections.isUndefined(existingPair)) {
                 this.replace(existingPair, newPair);
@@ -1132,7 +1132,7 @@ module collections {
         }
 
         /**
-         * Returns an array containing all of the values in this LinkedDictionary, ordered by 
+         * Returns an array containing all of the values in this LinkedDictionary, ordered by
          * insertion order.
          * @return {Array} an array containing all of the values in this LinkedDictionary,
          * ordered by insertion order.
@@ -1146,11 +1146,11 @@ module collections {
         }
 
         /**
-        * Executes the provided function once for each key-value pair 
+        * Executes the provided function once for each key-value pair
         * present in this LinkedDictionary. It is done in the order of insertion
         * into the LinkedDictionary
         * @param {function(Object,Object):*} callback function to execute, it is
-        * invoked with two arguments: key and value. To break the iteration you can 
+        * invoked with two arguments: key and value. To break the iteration you can
         * optionally return false.
         */
         forEach(callback: (key: K, value: V) => any): void {
@@ -1186,9 +1186,9 @@ module collections {
 
     export class MultiDictionary<K, V> {
 
-        // Cannot do: 
+        // Cannot do:
         // class MultiDictionary<K,V> extends Dictionary<K,Array<V>> {
-        // Since we want to reuse the function name setValue and types in signature become incompatible 
+        // Since we want to reuse the function name setValue and types in signature become incompatible
         // Therefore we are using composition instead of inheritance
         private dict: Dictionary<K, Array<V>>;
         private equalsF: IEqualsFunction<V>;
@@ -1251,7 +1251,7 @@ module collections {
         }
 
         /**
-         * Adds the value to the array associated with the specified key, if 
+         * Adds the value to the array associated with the specified key, if
          * it is not already present.
          * @param {Object} key key with which the specified value is to be
          * associated.
@@ -1279,13 +1279,13 @@ module collections {
 
         /**
          * Removes the specified values from the array of values associated with the
-         * specified key. If a value isn't given, all values associated with the specified 
+         * specified key. If a value isn't given, all values associated with the specified
          * key are removed.
          * @param {Object} key key whose mapping is to be removed from the
          * dictionary.
-         * @param {Object=} value optional argument to specify the value to remove 
+         * @param {Object=} value optional argument to specify the value to remove
          * from the array associated with the specified key.
-         * @return {*} true if the dictionary changed, false if the key doesn't exist or 
+         * @return {*} true if the dictionary changed, false if the key doesn't exist or
          * if the specified value isn't associated with the specified key.
          */
         remove(key: K, value?: V): boolean {
@@ -1331,7 +1331,7 @@ module collections {
          * Returns true if this dictionary at least one value associatted the specified key.
          * @param {Object} key key whose presence in this dictionary is to be
          * tested.
-         * @return {boolean} true if this dictionary at least one value associatted 
+         * @return {boolean} true if this dictionary at least one value associatted
          * the specified key.
          */
         containsKey(key: K): boolean {
@@ -1360,7 +1360,7 @@ module collections {
         isEmpty(): boolean {
             return this.dict.isEmpty();
         }
-    }// end of multi dictionary 
+    }// end of multi dictionary
 
     export class Heap<T> {
         /**
@@ -1377,12 +1377,12 @@ module collections {
         private compare: ICompareFunction<T>;
         /**
          * Creates an empty Heap.
-         * @class 
-         * <p>A heap is a binary tree, where the nodes maintain the heap property: 
-         * each node is smaller than each of its children and therefore a MinHeap 
+         * @class
+         * <p>A heap is a binary tree, where the nodes maintain the heap property:
+         * each node is smaller than each of its children and therefore a MinHeap
          * This implementation uses an array to store elements.</p>
-         * <p>If the inserted elements are custom objects a compare function must be provided, 
-         *  at construction time, otherwise the <=, === and >= operators are 
+         * <p>If the inserted elements are custom objects a compare function must be provided,
+         *  at construction time, otherwise the <=, === and >= operators are
          * used to compare elements. Example:</p>
          *
          * <pre>
@@ -1391,7 +1391,7 @@ module collections {
          *     return -1;
          *  } if (a is greater than b by the ordering criterion) {
          *     return 1;
-         *  } 
+         *  }
          *  // a must be equal to b
          *  return 0;
          * }
@@ -1406,7 +1406,7 @@ module collections {
          *     return 1;
          *  } if (a is greater than b by the ordering criterion) {
          *     return -1;
-         *  } 
+         *  }
          *  // a must be equal to b
          *  return 0;
          * }
@@ -1586,10 +1586,10 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element present in this heap in 
+         * Executes the provided function once for each element present in this heap in
          * no particular order.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element value, to break the iteration you can 
+         * invoked with one argument: the element value, to break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>) {
@@ -1693,16 +1693,16 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element present in this stack in 
+         * Executes the provided function once for each element present in this stack in
          * LIFO order.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element value, to break the iteration you can 
+         * invoked with one argument: the element value, to break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>) {
             this.list.forEach(callback);
         }
-    } // End of stack 
+    } // End of stack
 
 
 
@@ -1814,10 +1814,10 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element present in this queue in 
+         * Executes the provided function once for each element present in this queue in
          * FIFO order.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element value, to break the iteration you can 
+         * invoked with one argument: the element value, to break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>) {
@@ -1833,9 +1833,9 @@ module collections {
         /**
          * Creates an empty priority queue.
          * @class <p>In a priority queue each element is associated with a "priority",
-         * elements are dequeued in highest-priority-first order (the elements with the 
-         * highest priority are dequeued first). Priority Queues are implemented as heaps. 
-         * If the inserted elements are custom objects a compare function must be provided, 
+         * elements are dequeued in highest-priority-first order (the elements with the
+         * highest priority are dequeued first). Priority Queues are implemented as heaps.
+         * If the inserted elements are custom objects a compare function must be provided,
          * otherwise the <=, === and >= operators are used to compare object priority.</p>
          * <pre>
          * function compare(a, b) {
@@ -1843,7 +1843,7 @@ module collections {
          *     return -1;
          *  } if (a is greater than b by the ordering criterion) {
          *     return 1;
-         *  } 
+         *  }
          *  // a must be equal to b
          *  return 0;
          * }
@@ -1878,7 +1878,7 @@ module collections {
 
         /**
          * Retrieves and removes the highest priority element of this queue.
-         * @return {*} the the highest priority element of this queue, 
+         * @return {*} the the highest priority element of this queue,
          *  or undefined if this queue is empty.
          */
         dequeue(): T {
@@ -1933,10 +1933,10 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element present in this queue in 
+         * Executes the provided function once for each element present in this queue in
          * no particular order.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element value, to break the iteration you can 
+         * invoked with one argument: the element value, to break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>) {
@@ -1954,7 +1954,7 @@ module collections {
         /**
          * Creates an empty set.
          * @class <p>A set is a data structure that contains no duplicate items.</p>
-         * <p>If the inserted elements are custom objects a function 
+         * <p>If the inserted elements are custom objects a function
          * which converts elements to strings must be provided. Example:</p>
          *
          * <pre>
@@ -2076,10 +2076,10 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element 
+         * Executes the provided function once for each element
          * present in this set.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one arguments: the element. To break the iteration you can 
+         * invoked with one arguments: the element. To break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>): void {
@@ -2135,9 +2135,9 @@ module collections {
 
         /**
          * Creates an empty bag.
-         * @class <p>A bag is a special kind of set in which members are 
+         * @class <p>A bag is a special kind of set in which members are
          * allowed to appear more than once.</p>
-         * <p>If the inserted elements are custom objects a function 
+         * <p>If the inserted elements are custom objects a function
          * which converts elements to unique strings must be provided. Example:</p>
          *
          * <pre>
@@ -2211,8 +2211,8 @@ module collections {
 
         /**
         * Removes nCopies of the specified object to this bag.
-        * If the number of copies to remove is greater than the actual number 
-        * of copies in the Bag, all copies are removed. 
+        * If the number of copies to remove is greater than the actual number
+        * of copies in the Bag, all copies are removed.
         * @param {Object} element element to remove.
         * @param {number=} nCopies the number of copies to remove, if this argument is
         * undefined 1 copy is removed.
@@ -2242,7 +2242,7 @@ module collections {
         }
 
         /**
-         * Returns an array containing all of the elements in this big in arbitrary order, 
+         * Returns an array containing all of the elements in this big in arbitrary order,
          * including multiple copies.
          * @return {Array} an array containing all of the elements in this bag.
          */
@@ -2262,7 +2262,7 @@ module collections {
         }
 
         /**
-         * Returns a set of unique elements in this bag. 
+         * Returns a set of unique elements in this bag.
          * @return {collections.Set<T>} a set of unique elements in this bag.
          */
         toSet(): Set<T> {
@@ -2277,10 +2277,10 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element 
+         * Executes the provided function once for each element
          * present in this bag, including multiple copies.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element. To break the iteration you can 
+         * invoked with one argument: the element. To break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>) {
@@ -2319,10 +2319,10 @@ module collections {
             this.dictionary.clear();
         }
 
-    }// End of bag 
+    }// End of bag
 
 
-    // Internal interface for BST 
+    // Internal interface for BST
     interface BSTreeNode<T>{
         element: T;
         leftCh: BSTreeNode<T>;
@@ -2336,21 +2336,21 @@ module collections {
         private nElements: number;
         /**
          * Creates an empty binary search tree.
-         * @class <p>A binary search tree is a binary tree in which each 
-         * internal node stores an element such that the elements stored in the 
-         * left subtree are less than it and the elements 
+         * @class <p>A binary search tree is a binary tree in which each
+         * internal node stores an element such that the elements stored in the
+         * left subtree are less than it and the elements
          * stored in the right subtree are greater.</p>
-         * <p>Formally, a binary search tree is a node-based binary tree data structure which 
+         * <p>Formally, a binary search tree is a node-based binary tree data structure which
          * has the following properties:</p>
          * <ul>
-         * <li>The left subtree of a node contains only nodes with elements less 
+         * <li>The left subtree of a node contains only nodes with elements less
          * than the node's element</li>
-         * <li>The right subtree of a node contains only nodes with elements greater 
+         * <li>The right subtree of a node contains only nodes with elements greater
          * than the node's element</li>
          * <li>Both the left and right subtrees must also be binary search trees.</li>
          * </ul>
-         * <p>If the inserted elements are custom objects a compare function must 
-         * be provided at construction time, otherwise the <=, === and >= operators are 
+         * <p>If the inserted elements are custom objects a compare function must
+         * be provided at construction time, otherwise the <=, === and >= operators are
          * used to compare elements. Example:</p>
          * <pre>
          * function compare(a, b) {
@@ -2358,7 +2358,7 @@ module collections {
          *     return -1;
          *  } if (a is greater than b by the ordering criterion) {
          *     return 1;
-         *  } 
+         *  }
          *  // a must be equal to b
          *  return 0;
          * }
@@ -2444,9 +2444,9 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element present in this tree in 
+         * Executes the provided function once for each element present in this tree in
          * in-order.
-         * @param {function(Object):*} callback function to execute, it is invoked with one 
+         * @param {function(Object):*} callback function to execute, it is invoked with one
          * argument: the element value, to break the iteration you can optionally return false.
          */
         inorderTraversal(callback: ILoopFunction<T>): void {
@@ -2457,7 +2457,7 @@ module collections {
 
         /**
          * Executes the provided function once for each element present in this tree in pre-order.
-         * @param {function(Object):*} callback function to execute, it is invoked with one 
+         * @param {function(Object):*} callback function to execute, it is invoked with one
          * argument: the element value, to break the iteration you can optionally return false.
          */
         preorderTraversal(callback: ILoopFunction<T>): void {
@@ -2468,7 +2468,7 @@ module collections {
 
         /**
          * Executes the provided function once for each element present in this tree in post-order.
-         * @param {function(Object):*} callback function to execute, it is invoked with one 
+         * @param {function(Object):*} callback function to execute, it is invoked with one
          * argument: the element value, to break the iteration you can optionally return false.
          */
         postorderTraversal(callback: ILoopFunction<T>): void {
@@ -2478,9 +2478,9 @@ module collections {
         }
 
         /**
-         * Executes the provided function once for each element present in this tree in 
+         * Executes the provided function once for each element present in this tree in
          * level-order.
-         * @param {function(Object):*} callback function to execute, it is invoked with one 
+         * @param {function(Object):*} callback function to execute, it is invoked with one
          * argument: the element value, to break the iteration you can optionally return false.
          */
         levelTraversal(callback: ILoopFunction<T>): void {
@@ -2515,7 +2515,7 @@ module collections {
          * Executes the provided function once for each element present in this tree in inorder.
          * Equivalent to inorderTraversal.
          * @param {function(Object):*} callback function to execute, it is
-         * invoked with one argument: the element value, to break the iteration you can 
+         * invoked with one argument: the element value, to break the iteration you can
          * optionally return false.
          */
         forEach(callback: ILoopFunction<T>): void {
@@ -2748,4 +2748,4 @@ module collections {
     } // end of BSTree
 
 
-}// End of module 
+}// End of module

@@ -39,6 +39,79 @@ class SearchResult<Node> {
     cost : number;
 }
 
+function aStarSearch<Node> (
+  graph : Graph<Node>,
+  start : Node,
+  goal : (n:Node) => boolean,
+  heuristics : (n:Node) => number,
+  timeout : number
+) : SearchResult<Node> {
+  var result : SearchResult<Node> = {
+      path: [],
+      cost: 0
+  };
+
+  var openNodes : Heap<Node> = new Heap<Node>(compareNodes);
+  var closedNodes : Set<Node> = new Set<Node>();
+  var predecessors : Dictionary<Node, Node> = new Dictionary<Node, Node>();
+  var costs : Dictionary<Node, number> = new Dictionary<Node, number>();
+
+  openNodes.add(start);
+
+  var getF = function (node : Node) : number{
+      return heuristics(node) + costs.getValue(node);
+  };
+
+  var compareNodes : ICompareFunction<Node> = function (first, second) {
+      return getF(first) - getF(second);
+  };
+
+  var isCostLower = function (node : Node, edge : Edge<Node>) {
+    return costs.containsKey(edge.to)
+      || costs.getValue(node) + edge.cost < costs.getValue(edge.to);
+  };
+
+  while (openNodes.size() > 0) {
+    var currentNode = openNodes.removeRoot();
+
+    if (goal(currentNode)) {
+      result.cost = costs.getValue(currentNode);
+
+      result.path.unshift(currentNode);
+
+      while (predecessors.containsKey(currentNode)) {
+        currentNode = predecessors.getValue(currentNode);
+        result.path.unshift(currentNode);
+      }
+
+      return result;
+    } else {
+      closedNodes.add(currentNode);
+
+      for (var edge of graph.outgoingEdges(currentNode)) {
+        if (closedNodes.contains(edge.to)) {
+          continue;
+        }
+
+        var cost = costs.getValue(currentNode) + edge.cost;
+
+        if (openNodes.contains(edge.to) && cost >= costs.getValue(edge.to)) {
+          continue;
+        }
+
+        predecessors.setValue(edge.to, currentNode);
+        costs.setValue(edge.to, cost);
+        if (!openNodes.contains(edge.to)) {
+          openNodes.add(edge.to);
+        } else {
+          openNodes.
+        }
+      }
+    }
+  }
+
+}
+
 /**
 * A\* search implementation, parameterised by a `Node` type. The code
 * here is just a template; you should rewrite this function
@@ -54,7 +127,7 @@ class SearchResult<Node> {
 * @param timeout Maximum time (in seconds) to spend performing A\* search.
 * @returns A search result, which contains the path from `start` to a node satisfying `goal` and the cost of this path.
 */
-function aStarSearch<Node> (
+function aStarSearch2<Node> (
   graph : Graph<Node>,
   start : Node,
   goal : (n:Node) => boolean,
@@ -83,39 +156,58 @@ function aStarSearch<Node> (
 
   while (openNodes.size() > 0) {
     var currentN = openNodes.removeRoot();
-    console.log("one node removed");
-    if(goal(currentN)) {
-      var path : LinkedList<Node> = new LinkedList<Node>();
-      while(!path.contains(start)) { //collect path nodes
-        path.add(currentN);
-        currentN = predecessors.getValue(currentN);
-      }
-
-      // reverse to create path
-      result.path = path.toArray().reverse();
-
-      result.cost = costs.getValue(currentN);
-      console.log(result);
-
-      break;
-    }
+    //console.log("one node removed");
+    // if(goal(currentN)) {
+    //   var path : LinkedList<Node> = new LinkedList<Node>();
+    //   while(!path.contains(start)) { //collect path nodes
+    //     path.add(currentN);
+    //     currentN = predecessors.getValue(currentN);
+    //   }
+    //
+    //   // reverse to create path
+    //   result.path = path.toArray().reverse();
+    //
+    //   result.cost = costs.getValue(currentN);
+    //   //console.log(result);
+    //
+    //   break;
+    // }
 
     for (var edge of graph.outgoingEdges(currentN)) {
-      if(!closedNodes.contains(edge.to)) {
-        //openNodes.add(edge.to);
-        if(!openNodes.contains(edge.to)
-          || costs.getValue(currentN) + edge.cost < costs.getValue(edge.to)) {
-          predecessors.setValue(edge.to, currentN);
-          costs.setValue(edge.to, costs.getValue(currentN) + edge.cost);
-          if(!openNodes.contains(edge.to)) {
-            openNodes.add(edge.to);
-            console.log("one node added");
-          }
-          else {
-            //shift / bubble up
-          }
+      if (goal(edge.to)) {
+        var path : LinkedList<Node> = new LinkedList<Node>();
+
+        var node : Node = edge.to;
+
+        while(!path.contains(start)) { //collect path nodes
+          path.add(node);
+          node = predecessors.getValue(node);
         }
+
+        result.path = path.toArray().reverse();
+        result.cost = costs.getValue(node);
+
+        return result;
       }
+
+      costs.setValue(edge.to, costs.getValue(currentN) + edge.cost)
+
+      // if(!closedNodes.contains(edge.to)) {
+      //   //openNodes.add(edge.to);
+      //   if(!openNodes.contains(edge.to)
+      //     || costs.getValue(currentN) + edge.cost < costs.getValue(edge.to)) {
+      //     predecessors.setValue(edge.to, currentN);
+      //     costs.setValue(edge.to, costs.getValue(currentN) + edge.cost);
+      //     if(!openNodes.contains(edge.to)) {
+      //       openNodes.add(edge.to);
+      //       //console.log("one node added");
+      //     }
+      //     else {
+      //
+      //       //shift / bubble up
+      //     }
+      //   }
+      // }
     }
     closedNodes.add(currentN);
 
