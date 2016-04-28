@@ -1,11 +1,16 @@
 ///<reference path="lib/collections.ts"/>
 ///<reference path="lib/node.d.ts"/>
 
+import arrays = collections.arrays;
 import ICompareFunction = collections.ICompareFunction;
-import Heap = collections.Heap;
+import IEqualsFunction = collections.IEqualsFunction;
 import Set = collections.Set;
 import Dictionary = collections.Dictionary;
 import LinkedList = collections.LinkedList;
+
+import compareToEquals = collections.compareToEquals;
+import defaultCompare = collections.defaultCompare;
+import defaultEquals = collections.defaultEquals;
 
 /** Graph module
 *
@@ -18,108 +23,29 @@ import LinkedList = collections.LinkedList;
 
 /** An edge in a graph. */
 class Edge<Node> {
-    from : Node;
-    to   : Node;
-    cost : number;
+  from : Node;
+  to   : Node;
+  cost : number;
 }
 
 /** A directed graph. */
 interface Graph<Node> {
-    /** Computes the edges that leave from a node. */
-    outgoingEdges(node : Node) : Edge<Node>[];
-    /** A function that compares nodes. */
-    compareNodes : ICompareFunction<Node>;
+  /** Computes the edges that leave from a node. */
+  outgoingEdges(node : Node) : Edge<Node>[];
+  /** A function that compares nodes. */
+  compareNodes : ICompareFunction<Node>;
 }
 
 /** Type that reports the result of a search. */
 class SearchResult<Node> {
-    /** The path (sequence of Nodes) found by the search algorithm. */
-    path : Node[];
-    /** The total cost of the path. */
-    cost : number;
-}
-
-function aStarSearch<Node> (
-  graph : Graph<Node>,
-  start : Node,
-  goal : (n:Node) => boolean,
-  heuristics : (n:Node) => number,
-  timeout : number
-) : SearchResult<Node> {
-  var result : SearchResult<Node> = {
-      path: [],
-      cost: 0
-  };
-
-  var openNodes : Heap<Node> = new Heap<Node>(compareNodes);
-  var closedNodes : Set<Node> = new Set<Node>();
-  var predecessors : Dictionary<Node, Node> = new Dictionary<Node, Node>();
-  var costs : Dictionary<Node, number> = new Dictionary<Node, number>();
-
-  openNodes.add(start);
-
-  var getF = function (node : Node) : number{
-      return heuristics(node) + costs.getValue(node);
-  };
-
-  var compareNodes : ICompareFunction<Node> = function (first, second) {
-      return getF(first) - getF(second);
-  };
-
-  var isCostLower = function (node : Node, edge : Edge<Node>) {
-    return costs.containsKey(edge.to)
-      || costs.getValue(node) + edge.cost < costs.getValue(edge.to);
-  };
-
-  while (openNodes.size() > 0) {
-    var currentNode = openNodes.removeRoot();
-
-    if (goal(currentNode)) {
-      result.cost = costs.getValue(currentNode);
-
-      result.path.unshift(currentNode);
-
-      while (predecessors.containsKey(currentNode)) {
-        currentNode = predecessors.getValue(currentNode);
-        result.path.unshift(currentNode);
-      }
-
-      return result;
-    } else {
-      closedNodes.add(currentNode);
-
-      for (var edge of graph.outgoingEdges(currentNode)) {
-        if (closedNodes.contains(edge.to)) {
-          continue;
-        }
-
-        var cost = costs.getValue(currentNode) + edge.cost;
-
-        if (openNodes.contains(edge.to) && cost >= costs.getValue(edge.to)) {
-          continue;
-        }
-
-        predecessors.setValue(edge.to, currentNode);
-        costs.setValue(edge.to, cost);
-        if (!openNodes.contains(edge.to)) {
-          openNodes.add(edge.to);
-        } else {
-          openNodes.
-        }
-      }
-    }
-  }
-
+  /** The path (sequence of Nodes) found by the search algorithm. */
+  path : Node[];
+  /** The total cost of the path. */
+  cost : number;
 }
 
 /**
-* A\* search implementation, parameterised by a `Node` type. The code
-* here is just a template; you should rewrite this function
-* entirely. In this template, the code produces a dummy search result
-* which just picks the first possible neighbour.
-*
-* Note that you should not change the API (type) of this function,
-* only its body.
+* Calculates the most optimal path from start to goal in the graph, using provided heuristics.
 * @param graph The graph on which to perform A\* search.
 * @param start The initial node.
 * @param goal A function that returns true when given a goal node. Used to determine if the algorithm has reached the goal.
@@ -127,110 +53,196 @@ function aStarSearch<Node> (
 * @param timeout Maximum time (in seconds) to spend performing A\* search.
 * @returns A search result, which contains the path from `start` to a node satisfying `goal` and the cost of this path.
 */
-function aStarSearch2<Node> (
+function aStarSearch<Node> (
   graph : Graph<Node>,
   start : Node,
-  goal : (n:Node) => boolean,
-  heuristics : (n:Node) => number,
+  goal : (n : Node) => boolean,
+  heuristics : (n : Node) => number,
   timeout : number
 ) : SearchResult<Node> {
-  // A dummy search result: it just picks the first possible neighbour
   var result : SearchResult<Node> = {
-      path: [start],
-      cost: 0
+    path: [start],
+    cost: 0
   };
 
-  var openNodes : Heap<Node> = new Heap<Node>(compareNodes);
+  // The set of closed nodes.
   var closedNodes : Set<Node> = new Set<Node>();
+  // The nodes g-costs.
   var costs : Dictionary<Node, number> = new Dictionary<Node, number>();
+  // The nodes predecessor.
   var predecessors : Dictionary<Node, Node> = new Dictionary<Node, Node>();
+
+  // Returns the f-value of a Node.
+  var getF = function(node : Node) : number{
+    return heuristics(node) + costs.getValue(node);
+  }
+
+  // Comparison of 2 Nodes, where they are never the same.
+  var compareFValue : ICompareFunction<Node> = function(first, second) {
+    var difference = getF(first) - getF(second);
+    if (difference != 0) {
+      return difference;
+    } else {
+      return 1;
+    }
+  }
+
+  // The set of open nodes.
+  var openNodes : Heap<Node> =
+    new Heap<Node>(compareFValue, compareToEquals(graph.compareNodes));
+
+  // Add start to the set of open nodes, including setting its g-cost and predecessor.
+  predecessors.setValue(start, start);
+  costs.setValue(start, 0);
   openNodes.add(start);
 
-  var getF = function(node : Node) : number{
-      return heuristics(node) + costs.getValue(node);
-  }
+  // Continues looking through the set of open nodes as long as theres any left.
+  while (!openNodes.isEmpty()) {
+    var currentNode = openNodes.removeRoot();
+    closedNodes.add(currentNode);
 
-  var compareNodes : ICompareFunction<Node> = function(first, second) {
-      return getF(first) - getF(second);
-  }
-
-  while (openNodes.size() > 0) {
-    var currentN = openNodes.removeRoot();
-    //console.log("one node removed");
-    // if(goal(currentN)) {
-    //   var path : LinkedList<Node> = new LinkedList<Node>();
-    //   while(!path.contains(start)) { //collect path nodes
-    //     path.add(currentN);
-    //     currentN = predecessors.getValue(currentN);
-    //   }
-    //
-    //   // reverse to create path
-    //   result.path = path.toArray().reverse();
-    //
-    //   result.cost = costs.getValue(currentN);
-    //   //console.log(result);
-    //
-    //   break;
-    // }
-
-    for (var edge of graph.outgoingEdges(currentN)) {
-      if (goal(edge.to)) {
-        var path : LinkedList<Node> = new LinkedList<Node>();
-
-        var node : Node = edge.to;
-
-        while(!path.contains(start)) { //collect path nodes
-          path.add(node);
-          node = predecessors.getValue(node);
-        }
-
-        result.path = path.toArray().reverse();
-        result.cost = costs.getValue(node);
-
-        return result;
+    // Optimal path found.
+    if (goal(currentNode)) {
+      var path : LinkedList<Node> = new LinkedList<Node>();
+      // Collects path nodes
+      while (!path.contains(start)) {
+        path.add(currentNode);
+        currentNode = predecessors.getValue(currentNode);
       }
-
-      costs.setValue(edge.to, costs.getValue(currentN) + edge.cost)
-
-      // if(!closedNodes.contains(edge.to)) {
-      //   //openNodes.add(edge.to);
-      //   if(!openNodes.contains(edge.to)
-      //     || costs.getValue(currentN) + edge.cost < costs.getValue(edge.to)) {
-      //     predecessors.setValue(edge.to, currentN);
-      //     costs.setValue(edge.to, costs.getValue(currentN) + edge.cost);
-      //     if(!openNodes.contains(edge.to)) {
-      //       openNodes.add(edge.to);
-      //       //console.log("one node added");
-      //     }
-      //     else {
-      //
-      //       //shift / bubble up
-      //     }
-      //   }
-      // }
+      // Creates result.
+      result.path = path.toArray().reverse();
+      result.cost = costs.getValue(result.path[result.path.length-1]);
+      break;
     }
-    closedNodes.add(currentN);
 
-  /*
-  while the open list is not empty
-    find the node with the least f on the open list, call it "q"
-    pop q off the open list
-    generate q's 8 successors and set their parents to q
-    for each successor
-    	if successor is the goal, stop the search
-        successor.g = q.g + distance between successor and q
-        successor.h = distance from goal to successor------------
-        successor.f = successor.g + successor.h-------------
+    // Goes through every neighbouring node.
+    for (var edge of graph.outgoingEdges(currentNode)) {
+      if (!closedNodes.contains(edge.to)) {
+        // Found the currently most optimal path to the neighbour.
+        if (!costs.containsKey(edge.to) || costs.getValue(currentNode)
+          + edge.cost < costs.getValue(edge.to)) {
+          // Sets the neighbours predecessor to the current Node.
+          predecessors.setValue(edge.to, currentNode);
 
-        if a node with the same position as successor is in the OPEN list \
-            which has a lower f than successor, skip this successor
-        if a node with the same position as successor is in the CLOSED list \
-            which has a lower f than successor, skip this successor
-        otherwise, add the node to the open list
-    end
-    push q on the closed list
-  end
-  */
+          // Sets the g-cost for the neighbour.
+          costs.setValue(edge.to, costs.getValue(currentNode) + edge.cost);
+
+          // Adds or updates the position in the heap.
+          if (!openNodes.contains(edge.to)) {
+            openNodes.add(edge.to);
+          } else {
+            openNodes.update(edge.to);
+          }
+        }
+      }
+    }
   }
   return result;
+}
+
+// Modified Heap datastructure used to repressent the open set of nodes.
+class Heap<T> {
+  private data : T[] = [];
+  private compare : ICompareFunction<T>;
+  private equals : IEqualsFunction<T>;
+
+  // Constructor
+  constructor (
+    compareFunction? : ICompareFunction<T>,
+    equalsFunction? : IEqualsFunction<T>
+  ) {
+    this.compare = compareFunction || defaultCompare;
+    this.equals = equalsFunction || defaultEquals;
+  }
+
+  // Index of the nodes left child.
+  private leftChildIndex(nodeIndex : number) : number {
+    return (2 * nodeIndex) + 1;
+  }
+
+  // Index of the nodes right child.
+  private rightChildIndex(nodeIndex : number) : number {
+    return (2 * nodeIndex) + 2;
+  }
+
+  // Index of the nodes parent.
+  private parentIndex(nodeIndex : number) : number {
+    return Math.floor((nodeIndex - 1) / 2);
+  }
+
+  // Index of the smaller child node.
+  private minIndex(leftChild : number, rightChild : number) : number {
+    if (rightChild >= this.data.length) {
+      if (leftChild >= this.data.length) {
+        return -1;
+      } else {
+        return leftChild;
+      }
+    } else {
+      if (this.compare(this.data[leftChild], this.data[rightChild]) <= 0) {
+        return leftChild;
+      } else {
+        return rightChild;
+      }
+    }
+  }
+
+  // Sifts the node upwards.
+  private siftUp(index : number) : void {
+    var parent = this.parentIndex(index);
+    while (index > 0 && this.compare(this.data[parent], this.data[index]) > 0) {
+      arrays.swap(this.data, parent, index);
+      index = parent;
+      parent = this.parentIndex(index);
+    }
+  }
+
+  // Sifts the node downwards.
+  private siftDown(nodeIndex : number) : void {
+    var min = this.minIndex(this.leftChildIndex(nodeIndex),
+      this.rightChildIndex(nodeIndex));
+    while (min >= 0 && this.compare(this.data[nodeIndex], this.data[min]) > 0) {
+      arrays.swap(this.data, min, nodeIndex);
+      nodeIndex = min;
+      min = this.minIndex(this.leftChildIndex(nodeIndex),
+        this.rightChildIndex(nodeIndex));
+    }
+  }
+
+  // Updates the position of a element in the heap.
+  update(element : T) : void {
+    this.siftUp(this.data.indexOf(element));
+  }
+
+  // Adds the element to the heap and sifts it upwards.
+  add(element : T) : boolean {
+    this.data.push(element);
+    this.siftUp(this.data.length - 1);
+    return true;
+  }
+
+  // Removes and returns the heaps root element.
+  removeRoot() : T {
+    if (this.data.length > 0) {
+      var obj = this.data[0];
+      this.data[0] = this.data[this.data.length - 1];
+      this.data.splice(this.data.length - 1, 1);
+      if (this.data.length > 0) {
+        this.siftDown(0);
+      }
+
+      return obj;
+    }
+    return undefined;
+  }
+
+  // Returns true if the element is in the heap.
+  contains(element : T) : boolean {
+    return arrays.contains(this.data, element, this.equals);
+  }
+
+  // Returns true if the heap is empty.
+  isEmpty() : boolean {
+    return this.data.length <= 0;
+  }
 }
