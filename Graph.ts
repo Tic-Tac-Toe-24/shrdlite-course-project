@@ -65,6 +65,9 @@ function aStarSearch<Node> (
     cost: 0
   };
 
+  var startTime : number = -Date.now();
+  timeout *= 1000;
+
   // The set of closed nodes.
   var closedNodes : Set<Node> = new Set<Node>();
   // The nodes g-costs.
@@ -97,7 +100,7 @@ function aStarSearch<Node> (
   openNodes.add(start);
 
   // Continues looking through the set of open nodes as long as theres any left.
-  while (!openNodes.isEmpty()) {
+  while (!openNodes.isEmpty() && startTime + Date.now() < timeout) {
     var currentNode = openNodes.removeRoot();
     closedNodes.add(currentNode);
 
