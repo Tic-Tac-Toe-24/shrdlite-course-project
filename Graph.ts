@@ -152,11 +152,11 @@ function aStarSearch<Node> (
   return result;
 }
 
-//TimeOut excetption
+// TimeOut excetption
 class TimeOutException {
-    status: number;
-    message: string="Timed Out";
-    constructor(status: number) {
+    status : number;
+    message : string = "Timed Out";
+    constructor (status : number) {
         this.status = status;
     }
 }
