@@ -138,16 +138,21 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
             }
 
             var object = state.objects[oid];
+            var eObject = entity.object;
 
-            if (entity.object.size != null
-                && entity.object.size != object.size)
+            if(eObject.color == null && eObject.form == null && eObject.size == null && eObject.object) {
+                eObject = entity.object.object;
+            }
+
+            if (eObject.size != null
+                && eObject.size != object.size)
                 return false;
-            if (entity.object.color != null
-                && entity.object.color != object.color)
+            if (eObject.color != null
+                && eObject.color != object.color)
                 return false;
-            if (entity.object.form != null
-                && entity.object.form != 'anyform'
-                && entity.object.form != object.form) 
+            if (eObject.form != null
+                && eObject.form != 'anyform'
+                && eObject.form != object.form) 
                 return false;                
             if (entity.object.location != null) {
                 switch(entity.object.location.relation) {
@@ -170,14 +175,13 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
                             return false;
                         break;
                     case 'leftof' : 
-                        console.log("TEST");
+                        
                         break;
                     case 'rightof' : 
                         
                         break;
                 }
             }
-            
             return true;
         }
 
@@ -235,24 +239,19 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
                         targets.push(state.stacks[index1][index2]);
         }
 
-        console.log(objects);
-        console.log(targets);
         for (var object of objects)
             if(cmd.location != null) {
-                for (var target of targets)
-                    if(physicalLaws(object, target))
+                for (var target of targets) {
+                    if(physicalLaws(object, target)) {
                         interpretation.push([{polarity: true, relation: action, args: [object, target]}]);
+                    }
+                }
             } else {
                 interpretation.push([{polarity: true, relation: action, args: [object]}]);
             }
-        
-        // var interpretation : DNFFormula = [[
-        //     {polarity: true, relation: "ontop", args: [a, "floor"]},
-        //     {polarity: true, relation: "holding", args: [b]}
-        // ]];
+
         if(interpretation.length == 0)
-            return null;
+            throw Error("ERROR: No valid interpretation : " + cmd);
         return interpretation;
     }
-
 }
