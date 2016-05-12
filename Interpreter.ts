@@ -26,232 +26,246 @@
 */
 module Interpreter {
 
-    //////////////////////////////////////////////////////////////////////
-    // exported functions, classes and interfaces/types
+  //////////////////////////////////////////////////////////////////////
+  // exported functions, classes and interfaces/types
 
-/**
-Top-level function for the Interpreter. It calls `interpretCommand` for each possible parse of the command. No need to change this one.
-* @param parses List of parses produced by the Parser.
-* @param currentState The current state of the world.
-* @returns Augments ParseResult with a list of interpretations. Each interpretation is represented by a list of Literals.
-*/
-    export function interpret(parses : Parser.ParseResult[], currentState : WorldState) : InterpretationResult[] {
-        var errors : Error[] = [];
-        var interpretations : InterpretationResult[] = [];
-        parses.forEach((parseresult) => {
-            try {
-                var result : InterpretationResult = <InterpretationResult>parseresult;
-                result.interpretation = interpretCommand(result.parse, currentState);
-                interpretations.push(result);
-            } catch(err) {
-                errors.push(err);
-            }
-        });
-        if (interpretations.length) {
-            return interpretations;
-        } else {
-            // only throw the first error found
-            throw errors[0];
-        }
+  /**
+   Top-level function for the Interpreter. It calls `interpretCommand` for each
+   possible parse of the command. No need to change this one.
+   * @param parses List of parses produced by the Parser.
+   * @param currentState The current state of the world.
+   * @returns Augments ParseResult with a list of interpretations.
+   *          Each interpretation is represented by a list of Literals.
+   */
+  export function interpret(parses : Parser.ParseResult[],
+      currentState : WorldState) : InterpretationResult[] {
+    var errors : Error[] = [];
+    var interpretations : InterpretationResult[] = [];
+    parses.forEach((parseresult) => {
+      try {
+        var result : InterpretationResult = <InterpretationResult>parseresult;
+        result.interpretation = interpretCommand(result.parse, currentState);
+        interpretations.push(result);
+      } catch(err) {
+        errors.push(err);
+      }
+    });
+
+    if (interpretations.length) {
+      return interpretations;
+    } else {
+      // only throw the first error found
+      throw errors[0];
     }
+  }
 
-    export interface InterpretationResult extends Parser.ParseResult {
-        interpretation : DNFFormula;
-    }
+  export interface InterpretationResult extends Parser.ParseResult {
+    interpretation : DNFFormula;
+  }
 
-    export type DNFFormula = Conjunction[];
-    type Conjunction = Literal[];
+  export type DNFFormula = Conjunction[];
+  type Conjunction = Literal[];
 
-    /**
-    * A Literal represents a relation that is intended to
-    * hold among some objects.
-    */
-    export interface Literal {
-	/** Whether this literal asserts the relation should hold
-	 * (true polarity) or not (false polarity). For example, we
-	 * can specify that "a" should *not* be on top of "b" by the
-	 * literal {polarity: false, relation: "ontop", args:
-	 * ["a","b"]}.
-	 */
-        polarity : boolean;
-	/** The name of the relation in question. */
-        relation : string;
-	/** The arguments to the relation. Usually these will be either objects
-     * or special strings such as "floor" or "floor-N" (where N is a column) */
-        args : string[];
-    }
-
-    export function stringify(result : InterpretationResult) : string {
-        return result.interpretation.map((literals) => {
-            return literals.map((lit) => stringifyLiteral(lit)).join(" & ");
-            // return literals.map(stringifyLiteral).join(" & ");
-        }).join(" | ");
-    }
-
-    export function stringifyLiteral(lit : Literal) : string {
-        return (lit.polarity ? "" : "-") + lit.relation + "(" + lit.args.join(",") + ")";
-    }
-
-    //////////////////////////////////////////////////////////////////////
-    // private functions
-    /**
-     * The core interpretation function. The code here is just a
-     * template; you should rewrite this function entirely. In this
-     * template, the code produces a dummy interpretation which is not
-     * connected to `cmd`, but your version of the function should
-     * analyse cmd in order to figure out what interpretation to
-     * return.
-     * @param cmd The actual command. Note that it is *not* a string, but rather an object of type `Command` (as it has been parsed by the parser).
-     * @param state The current state of the world. Useful to look up objects in the world.
-     * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
+  /**
+   * A Literal represents a relation that is intended to
+   * hold among some objects.
+   */
+  export interface Literal {
+    /** Whether this literal asserts the relation should hold
+     * (true polarity) or not (false polarity). For example, we
+     * can specify that "a" should *not* be on top of "b" by the
+     * literal {polarity: false, relation: "ontop", args:
+     * ["a","b"]}.
      */
-    function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
-        var action : string;
-        var objects : string[] = [];
-        var targets : string[] = [];
-        var interpretation : DNFFormula = [];
+    polarity : boolean;
 
-        var getObject = function (index1 : number, index2 : number) : string {
-            if(index2 < 0)
-                return 'floor';
-            else
-                return state.stacks[index1][index2];
-        }
+    /** The name of the relation in question. */
+    relation : string;
 
-        var isStackValid = function (index : number, entity : Parser.Entity) : boolean {
-            if(index >= 0 && index < state.stacks.length) {
-                for(var index2 = 0; index2 < state.stacks[index].length; index2++) {
-                    if(isObjectValid(state.stacks[index][index2],index,index2,entity)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
+    /** The arguments to the relation. Usually these will be either objects
+     * or special strings such as "floor" or "floor-N" (where N is a column) */
+    args : string[];
+  }
 
-        var isObjectValid = function (oid : string, index1 : number, index2 : number, entity : Parser.Entity) : boolean {
-            if(oid == 'floor') {
-                if(entity.object.form != 'floor')
-                    return false;
-                
-                return true;
-            }
+  export function stringify(result : InterpretationResult) : string {
+    return result.interpretation.map((literals) => {
+      return literals.map((lit) => stringifyLiteral(lit)).join(" & ");
+      // return literals.map(stringifyLiteral).join(" & ");
+    }).join(" | ");
+  }
 
-            var object = state.objects[oid];
-            var eObject = entity.object;
+  export function stringifyLiteral(lit : Literal) : string {
+    return (lit.polarity ? "" : "-") + lit.relation + "(" + lit.args.join(",")
+        + ")";
+  }
 
-            if(eObject.color == null && eObject.form == null && eObject.size == null && eObject.object) {
-                eObject = entity.object.object;
-            }
+  //////////////////////////////////////////////////////////////////////
+  // private functions
+  /**
+   * The core interpretation function. The code here is just a
+   * template; you should rewrite this function entirely. In this
+   * template, the code produces a dummy interpretation which is not
+   * connected to `cmd`, but your version of the function should
+   * analyse cmd in order to figure out what interpretation to
+   * return.
+   * @param cmd The actual command. Note that it is *not* a string, but rather
+   *            an object of type `Command` (as it has been parsed by the
+   *            parser).
+   * @param state The current state of the world. Useful to look up objects in
+   *              the world.
+   * @returns A list of list of Literal, representing a formula in disjunctive
+   *          normal form (disjunction of conjunctions). See the dummy
+   *          interpetation returned in the code for an example, which means
+   *          ontop(a,floor) AND holding(b).
+   */
+  function interpretCommand(cmd : Parser.Command,
+      state : WorldState) : DNFFormula {
+    var action : string;
+    var objects : string[] = [];
+    var targets : string[] = [];
+    var interpretation : DNFFormula = [];
 
-            if (eObject.size != null
-                && eObject.size != object.size)
-                return false;
-            if (eObject.color != null
-                && eObject.color != object.color)
-                return false;
-            if (eObject.form != null
-                && eObject.form != 'anyform'
-                && eObject.form != object.form) 
-                return false;                
-            if (entity.object.location != null) {
-                switch(entity.object.location.relation) {
-                    case 'ontop' :
-                        if(!isObjectValid(getObject(index1, index2-1), index1, index2-1, entity.object.location.entity))
-                            return false;
-                        break;
-                    case 'inside' :
-                        if(!isObjectValid(getObject(index1, index2-1), index1, index2-1, entity.object.location.entity))
-                            return false;
-                        break;
-                    case 'above' : 
-                        
-                        break;
-                    case 'under' : 
-                        
-                        break;
-                    case 'beside' : 
-                        if(!isStackValid(index1-1,entity.object.location.entity) && !isStackValid(index1+1,entity.object.location.entity))
-                            return false;
-                        break;
-                    case 'leftof' : 
-                        
-                        break;
-                    case 'rightof' : 
-                        
-                        break;
-                }
-            }
-            return true;
-        }
-
-        var physicalLaws = function (object : string, target : string) : boolean {
-            if(target == 'floor') {
-                if(!(action == 'ontop' || action == 'above'))
-                    return false;
-                if(cmd.location != null && cmd.location.entity.object.form != 'floor')
-                    return false;
-
-                return true;
-            }
-
-            var obj = state.objects[object];
-            var tar = state.objects[target];
-
-            if(object == target)
-                return false;
-            if(obj.form == 'ball' && (action == 'inside' && tar.form != 'box') || (action == 'ontop' && tar.form != 'floor'))
-                return false;
-            if(tar.form == 'ball' && (action == 'ontop' || action == 'above'))
-                return false;
-            if(tar.size == 'small' && obj.size == 'large' && (action == 'ontop' || action == 'inside'))
-                return false;
-            if(tar.form == 'box' && tar.size == obj.size && (obj.form == 'pyramid' || obj.form == 'plank' || obj.form == 'box') && (action == 'ontop' || action == 'inside'))
-                return false;
-            if(obj.form == 'box' && (tar.form == 'brick' || tar.form == 'pyramid') && tar.size == 'small' && obj.size == 'small' && (action == 'ontop' || action == 'above'))
-                return false;
-            if(obj.form == 'box' && obj.size == 'large' && tar.form == 'pyramid' && tar.size == 'large' && (action == 'ontop' || action == 'above'))
-                return false;
-
-            return true;
-        }
-
-        switch (cmd.command) {
-          case 'move':
-              action = cmd.location.relation;
-              break;
-          case 'take':
-              action = 'holding';
-              break;
-          default:
-        }
-
-        for (var index1 = 0; index1 < state.stacks.length; index1++)
-            for (var index2 = 0; index2 < state.stacks[index1].length; index2++)
-                if (isObjectValid(state.stacks[index1][index2], index1, index2, cmd.entity))
-                    objects.push(state.stacks[index1][index2]);
-
-        if(cmd.location != null) {
-            targets.push('floor');
-            for (var index1 = 0; index1 < state.stacks.length; index1++)
-                for (var index2 = 0; index2 < state.stacks[index1].length; index2++)
-                    if (isObjectValid(state.stacks[index1][index2], index1, index2, cmd.location.entity))
-                        targets.push(state.stacks[index1][index2]);
-        }
-
-        for (var object of objects)
-            if(cmd.location != null) {
-                for (var target of targets) {
-                    if(physicalLaws(object, target)) {
-                        interpretation.push([{polarity: true, relation: action, args: [object, target]}]);
-                    }
-                }
-            } else {
-                interpretation.push([{polarity: true, relation: action, args: [object]}]);
-            }
-
-        if(interpretation.length == 0)
-            throw Error("ERROR: No valid interpretation : " + cmd);
-        return interpretation;
+    var getObject = function (x : number, y : number) : string {
+      return y < 0 ? 'floor' : state.stacks[x][y];
     }
+
+    var isStackValid = function (x : number, entity : Parser.Entity) : boolean {
+      if (x >= 0 && x < state.stacks.length)
+        for (var y = 0; y < state.stacks[x].length; y++)
+          if (isObjectValid(state.stacks[x][y], x, y, entity))
+            return true;
+
+      return false;
+    }
+
+    var isObjectValid = function (oid : string, x : number, y : number,
+        entity : Parser.Entity) : boolean {
+      if (oid == 'floor')
+        return entity.object.form == 'floor'
+
+      var object = state.objects[oid];
+      var eObject = entity.object;
+
+      if (eObject.color == null && eObject.form == null
+          && eObject.size == null && eObject.object)
+        eObject = entity.object.object;
+
+      if (eObject.size != null && eObject.size != object.size)
+        return false;
+      if (eObject.color != null && eObject.color != object.color)
+        return false;
+      if (eObject.form != null && eObject.form != 'anyform'
+          && eObject.form != object.form)
+        return false;
+      if (entity.object.location != null)
+        switch(entity.object.location.relation) {
+          case 'ontop':
+            if (!isObjectValid(getObject(x, y - 1), x, y - 1,
+                entity.object.location.entity))
+              return false;
+            break;
+          case 'inside':
+            if (!isObjectValid(getObject(x, y - 1), x, y - 1,
+                entity.object.location.entity))
+                return false;
+            break;
+          case 'above':
+
+            break;
+          case 'under':
+
+            break;
+          case 'beside':
+            if (!isStackValid(x-1,entity.object.location.entity)
+                && !isStackValid(x+1,entity.object.location.entity))
+              return false;
+            break;
+          case 'leftof':
+
+            break;
+          case 'rightof':
+
+            break;
+        }
+
+      return true;
+    }
+
+    var physicalLaws = function (object : string, target : string) : boolean {
+      if (target == 'floor') {
+        if (!(action == 'ontop' || action == 'above'))
+          return false;
+        if (cmd.location != null && cmd.location.entity.object.form != 'floor')
+          return false;
+
+        return true;
+      }
+
+      var obj = state.objects[object];
+      var tar = state.objects[target];
+
+      if (object == target)
+        return false;
+      if (obj.form == 'ball' && (action == 'inside' && tar.form != 'box')
+          || (action == 'ontop' && tar.form != 'floor'))
+        return false;
+      if (tar.form == 'ball' && (action == 'ontop' || action == 'above'))
+        return false;
+      if (tar.size == 'small' && obj.size == 'large'
+          && (action == 'ontop' || action == 'inside'))
+        return false;
+      if (tar.form == 'box' && tar.size == obj.size
+          && (obj.form == 'pyramid' || obj.form == 'plank' || obj.form == 'box')
+          && (action == 'ontop' || action == 'inside'))
+        return false;
+      if (obj.form == 'box' && (tar.form == 'brick' || tar.form == 'pyramid')
+          && tar.size == 'small' && obj.size == 'small'
+          && (action == 'ontop' || action == 'above'))
+        return false;
+      if (obj.form == 'box' && obj.size == 'large' && tar.form == 'pyramid'
+          && tar.size == 'large' && (action == 'ontop' || action == 'above'))
+        return false;
+
+      return true;
+    }
+
+    switch (cmd.command) {
+      case 'move':
+        action = cmd.location.relation;
+        break;
+      case 'take':
+        action = 'holding';
+        break;
+    }
+
+    for (var x = 0; x < state.stacks.length; x++)
+      for (var y = 0; y < state.stacks[x].length; y++)
+        if (isObjectValid(state.stacks[x][y], x, y, cmd.entity))
+          objects.push(state.stacks[x][y]);
+
+    if (cmd.location != null) {
+      targets.push('floor');
+
+      for (var x = 0; x < state.stacks.length; x++)
+        for (var y = 0; y < state.stacks[x].length; y++)
+          if (isObjectValid(state.stacks[x][y], x, y, cmd.location.entity))
+            targets.push(state.stacks[x][y]);
+    }
+
+    for (var object of objects)
+      if (cmd.location != null) {
+        for (var target of targets)
+          if (physicalLaws(object, target))
+            interpretation.push([{polarity: true, relation: action,
+                args: [object, target]}]);
+      } else {
+        interpretation.push([{polarity: true, relation: action,
+            args: [object]}]);
+      }
+
+    if (interpretation.length == 0)
+        throw Error("ERROR: No valid interpretation : " + cmd);
+
+    return interpretation;
+  }
 }
