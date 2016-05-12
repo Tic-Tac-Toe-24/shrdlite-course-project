@@ -108,20 +108,105 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
         var action : string;
         var objects : string[] = [];
+        var targets : string[] = [];
         var interpretation : DNFFormula = [];
 
-        var isObjectValid = function (oid : string) : boolean {
+        var getObject = function (index1 : number, index2 : number) : string {
+            if(index2 < 0)
+                return 'floor';
+            else
+                return state.stacks[index1][index2];
+        }
+
+        var isStackValid = function (index : number, entity : Parser.Entity) : boolean {
+            if(index >= 0 && index < state.stacks.length) {
+                for(var index2 = 0; index2 < state.stacks[index].length; index2++) {
+                    if(isObjectValid(state.stacks[index][index2],index,index2,entity)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        var isObjectValid = function (oid : string, index1 : number, index2 : number, entity : Parser.Entity) : boolean {
+            if(oid == 'floor') {
+                if(entity.object.form != 'floor')
+                    return false;
+                
+                return true;
+            }
+
             var object = state.objects[oid];
 
-            if (cmd.entity.object.size != null
-                && cmd.entity.object.size != object.size)
+            if (entity.object.size != null
+                && entity.object.size != object.size)
                 return false;
-            if (cmd.entity.object.color != null
-                && cmd.entity.object.color != object.color)
+            if (entity.object.color != null
+                && entity.object.color != object.color)
                 return false;
-            if (cmd.entity.object.form != null
-                && cmd.entity.object.form != 'anyform'
-                && cmd.entity.object.form != object.form)
+            if (entity.object.form != null
+                && entity.object.form != 'anyform'
+                && entity.object.form != object.form) 
+                return false;                
+            if (entity.object.location != null) {
+                switch(entity.object.location.relation) {
+                    case 'ontop' :
+                        if(!isObjectValid(getObject(index1, index2-1), index1, index2-1, entity.object.location.entity))
+                            return false;
+                        break;
+                    case 'inside' :
+                        if(!isObjectValid(getObject(index1, index2-1), index1, index2-1, entity.object.location.entity))
+                            return false;
+                        break;
+                    case 'above' : 
+                        
+                        break;
+                    case 'under' : 
+                        
+                        break;
+                    case 'beside' : 
+                        if(!isStackValid(index1-1,entity.object.location.entity) && !isStackValid(index1+1,entity.object.location.entity))
+                            return false;
+                        break;
+                    case 'leftof' : 
+                        console.log("TEST");
+                        break;
+                    case 'rightof' : 
+                        
+                        break;
+                }
+            }
+            
+            return true;
+        }
+
+        var physicalLaws = function (object : string, target : string) : boolean {
+            if(target == 'floor') {
+                if(!(action == 'ontop' || action == 'above'))
+                    return false;
+                if(cmd.location != null && cmd.location.entity.object.form != 'floor')
+                    return false;
+
+                return true;
+            }
+
+            var obj = state.objects[object];
+            var tar = state.objects[target];
+
+            if(object == target)
+                return false;
+            if(obj.form == 'ball' && (action == 'inside' && tar.form != 'box') || (action == 'ontop' && tar.form != 'floor'))
+                return false;
+            if(tar.form == 'ball' && (action == 'ontop' || action == 'above'))
+                return false;
+            if(tar.size == 'small' && obj.size == 'large' && (action == 'ontop' || action == 'inside'))
+                return false;
+            if(tar.form == 'box' && tar.size == obj.size && (obj.form == 'pyramid' || obj.form == 'plank' || obj.form == 'box') && (action == 'ontop' || action == 'inside'))
+                return false;
+            if(obj.form == 'box' && (tar.form == 'brick' || tar.form == 'pyramid') && tar.size == 'small' && obj.size == 'small' && (action == 'ontop' || action == 'above'))
+                return false;
+            if(obj.form == 'box' && obj.size == 'large' && tar.form == 'pyramid' && tar.size == 'large' && (action == 'ontop' || action == 'above'))
                 return false;
 
             return true;
@@ -129,10 +214,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
 
         switch (cmd.command) {
           case 'move':
-              // TODO
-              // switch (cmd.location.relation) {
-              //
-              // }
+              action = cmd.location.relation;
               break;
           case 'take':
               action = 'holding';
@@ -140,18 +222,36 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
           default:
         }
 
-        for (var stack of state.stacks)
-            for (var object of stack)
-                if (isObjectValid(object))
-                    objects.push(object);
+        for (var index1 = 0; index1 < state.stacks.length; index1++)
+            for (var index2 = 0; index2 < state.stacks[index1].length; index2++)
+                if (isObjectValid(state.stacks[index1][index2], index1, index2, cmd.entity))
+                    objects.push(state.stacks[index1][index2]);
 
+        if(cmd.location != null) {
+            targets.push('floor');
+            for (var index1 = 0; index1 < state.stacks.length; index1++)
+                for (var index2 = 0; index2 < state.stacks[index1].length; index2++)
+                    if (isObjectValid(state.stacks[index1][index2], index1, index2, cmd.location.entity))
+                        targets.push(state.stacks[index1][index2]);
+        }
+
+        console.log(objects);
+        console.log(targets);
         for (var object of objects)
-            interpretation.push([{polarity: true, relation: action, args: [object]}]);
-
+            if(cmd.location != null) {
+                for (var target of targets)
+                    if(physicalLaws(object, target))
+                        interpretation.push([{polarity: true, relation: action, args: [object, target]}]);
+            } else {
+                interpretation.push([{polarity: true, relation: action, args: [object]}]);
+            }
+        
         // var interpretation : DNFFormula = [[
         //     {polarity: true, relation: "ontop", args: [a, "floor"]},
         //     {polarity: true, relation: "holding", args: [b]}
         // ]];
+        if(interpretation.length == 0)
+            return null;
         return interpretation;
     }
 
