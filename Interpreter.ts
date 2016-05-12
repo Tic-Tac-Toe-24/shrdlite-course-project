@@ -3,12 +3,12 @@
 
 /**
 * Interpreter module
-* 
+*
 * The goal of the Interpreter module is to interpret a sentence
 * written by the user in the context of the current world state. In
 * particular, it must figure out which objects in the world,
 * i.e. which elements in the `objects` field of WorldState, correspond
-* to the ones referred to in the sentence. 
+* to the ones referred to in the sentence.
 *
 * Moreover, it has to derive what the intended goal state is and
 * return it as a logical formula described in terms of literals, where
@@ -34,7 +34,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
 * @param parses List of parses produced by the Parser.
 * @param currentState The current state of the world.
 * @returns Augments ParseResult with a list of interpretations. Each interpretation is represented by a list of Literals.
-*/    
+*/
     export function interpret(parses : Parser.ParseResult[], currentState : WorldState) : InterpretationResult[] {
         var errors : Error[] = [];
         var interpretations : InterpretationResult[] = [];
@@ -76,7 +76,7 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
         polarity : boolean;
 	/** The name of the relation in question. */
         relation : string;
-	/** The arguments to the relation. Usually these will be either objects 
+	/** The arguments to the relation. Usually these will be either objects
      * or special strings such as "floor" or "floor-N" (where N is a column) */
         args : string[];
     }
@@ -106,16 +106,53 @@ Top-level function for the Interpreter. It calls `interpretCommand` for each pos
      * @returns A list of list of Literal, representing a formula in disjunctive normal form (disjunction of conjunctions). See the dummy interpetation returned in the code for an example, which means ontop(a,floor) AND holding(b).
      */
     function interpretCommand(cmd : Parser.Command, state : WorldState) : DNFFormula {
-        // This returns a dummy interpretation involving two random objects in the world
-        var objects : string[] = Array.prototype.concat.apply([], state.stacks);
-        var a : string = objects[Math.floor(Math.random() * objects.length)];
-        var b : string = objects[Math.floor(Math.random() * objects.length)];
-        var interpretation : DNFFormula = [[
-            {polarity: true, relation: "ontop", args: [a, "floor"]},
-            {polarity: true, relation: "holding", args: [b]}
-        ]];
+        var action : string;
+        var objects : string[] = [];
+        var interpretation : DNFFormula = [];
+
+        var isObjectValid = function (oid : string) : boolean {
+            var object = state.objects[oid];
+
+            if (cmd.entity.object.size != null
+                && cmd.entity.object.size != object.size)
+                return false;
+            if (cmd.entity.object.color != null
+                && cmd.entity.object.color != object.color)
+                return false;
+            if (cmd.entity.object.form != null
+                && cmd.entity.object.form != 'anyform'
+                && cmd.entity.object.form != object.form)
+                return false;
+
+            return true;
+        }
+
+        switch (cmd.command) {
+          case 'move':
+              // TODO
+              // switch (cmd.location.relation) {
+              //
+              // }
+              break;
+          case 'take':
+              action = 'holding';
+              break;
+          default:
+        }
+
+        for (var stack of state.stacks)
+            for (var object of stack)
+                if (isObjectValid(object))
+                    objects.push(object);
+
+        for (var object of objects)
+            interpretation.push([{polarity: true, relation: action, args: [object]}]);
+
+        // var interpretation : DNFFormula = [[
+        //     {polarity: true, relation: "ontop", args: [a, "floor"]},
+        //     {polarity: true, relation: "holding", args: [b]}
+        // ]];
         return interpretation;
     }
 
 }
-
