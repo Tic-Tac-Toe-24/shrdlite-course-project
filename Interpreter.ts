@@ -1,33 +1,36 @@
 ///<reference path="World.ts"/>
 ///<reference path="Parser.ts"/>
 
+import Entity = Parser.Entity;
+
 /**
-* Interpreter module
-*
-* The goal of the Interpreter module is to interpret a sentence
-* written by the user in the context of the current world state. In
-* particular, it must figure out which objects in the world,
-* i.e. which elements in the `objects` field of WorldState, correspond
-* to the ones referred to in the sentence.
-*
-* Moreover, it has to derive what the intended goal state is and
-* return it as a logical formula described in terms of literals, where
-* each literal represents a relation among objects that should
-* hold. For example, assuming a world state where "a" is a ball and
-* "b" is a table, the command "put the ball on the table" can be
-* interpreted as the literal ontop(a,b). More complex goals can be
-* written using conjunctions and disjunctions of these literals.
-*
-* In general, the module can take a list of possible parses and return
-* a list of possible interpretations, but the code to handle this has
-* already been written for you. The only part you need to implement is
-* the core interpretation function, namely `interpretCommand`, which produces a
-* single interpretation for a single command.
-*/
+ * Interpreter module
+ *
+ * The goal of the Interpreter module is to interpret a sentence
+ * written by the user in the context of the current world state. In
+ * particular, it must figure out which objects in the world,
+ * i.e. which elements in the `objects` field of WorldState, correspond
+ * to the ones referred to in the sentence.
+ *
+ * Moreover, it has to derive what the intended goal state is and
+ * return it as a logical formula described in terms of literals, where
+ * each literal represents a relation among objects that should
+ * hold. For example, assuming a world state where "a" is a ball and
+ * "b" is a table, the command "put the ball on the table" can be
+ * interpreted as the literal ontop(a,b). More complex goals can be
+ * written using conjunctions and disjunctions of these literals.
+ *
+ * In general, the module can take a list of possible parses and return
+ * a list of possible interpretations, but the code to handle this has
+ * already been written for you. The only part you need to implement is
+ * the core interpretation function, namely `interpretCommand`, which produces a
+ * single interpretation for a single command.
+ */
 module Interpreter {
 
-  //////////////////////////////////////////////////////////////////////
-  // exported functions, classes and interfaces/types
+  ////////////////////////////////////////////////////////////////////////////
+  //            Exported functions, classes and interfaces/types            //
+  ////////////////////////////////////////////////////////////////////////////
 
   /**
    Top-level function for the Interpreter. It calls `interpretCommand` for each
@@ -99,8 +102,10 @@ module Interpreter {
         + ")";
   }
 
-  //////////////////////////////////////////////////////////////////////
-  // private functions
+  ////////////////////////////////////////////////////////////////////////////
+  //                           Private functions                            //
+  ////////////////////////////////////////////////////////////////////////////
+
   /**
    * The core interpretation function. The code here is just a
    * template; you should rewrite this function entirely. In this
@@ -125,39 +130,58 @@ module Interpreter {
     var targets : string[] = [];
     var interpretation : DNFFormula = [];
 
+    /**
+     * Returns the object at the given position.
+     * @param  {number} x the id of a stack
+     * @param  {number} y the position in the stack
+     * @return {string}   the object or 'floor' if y is negative
+     */
     var getObject = function (x : number, y : number) : string {
       return y < 0 ? 'floor' : state.stacks[x][y];
     }
 
-
-    var isStackValid = function (x : number, entity : Parser.Entity) : boolean {
+    /**
+     * Indicates whether a stack is valid.
+     * @param  {number} x      the id of a stack
+     * @param  {Entity} entity an entity with which to compare stack objects
+     * @return {boolean}       true if the stack is valid, false otherwise
+     */
+    var isStackValid = function (x : number, entity : Entity) : boolean {
       if (x >= 0 && x < state.stacks.length)
         for (var y = 0; y < state.stacks[x].length; y++)
-          if (isObjectValid(state.stacks[x][y], x, y,
-              entity))
+          if (isObjectValid(state.stacks[x][y], x, y, entity))
             return true;
 
       return false;
     }
 
-    var isObjectValid = function (oid : string, x : number, y : number,
-        entity : Parser.Entity) : boolean {
-      if (oid == 'floor')
+    /**
+     * Indicates whether an object is valid.
+     * @param  {string} objectId the id of the object to compare
+     * @param  {number} x        the id of the stack containing the object
+     * @param  {number} y        the position of the object in the stack
+     * @param  {Entity} entity   the entity containing the other object
+     * @return {boolean}         true if the object is valid, false otherwise
+     */
+    var isObjectValid = function (objectId : string, x : number, y : number,
+        entity : Entity) : boolean {
+      if (objectId == 'floor')
         return entity.object.form == 'floor'
 
-      var object = state.objects[oid];
-      var commandObject = entity.object;
+      var stateObject = state.objects[objectId]; // The object in the world state
+      var commandObject = entity.object; // The given object
 
       if (commandObject.color == null && commandObject.form == null
           && commandObject.size == null && commandObject.object)
         commandObject = entity.object.object;
 
-      if (commandObject.size != null && commandObject.size != object.size)
+      if (commandObject.size != null && commandObject.size != stateObject.size)
         return false;
-      if (commandObject.color != null && commandObject.color != object.color)
+      if (commandObject.color != null
+          && commandObject.color != stateObject.color)
         return false;
       if (commandObject.form != null && commandObject.form != 'anyform'
-          && commandObject.form != object.form)
+          && commandObject.form != stateObject.form)
         return false;
       if (entity.object.location != null)
         switch(entity.object.location.relation) {
@@ -209,7 +233,16 @@ module Interpreter {
       return true;
     }
 
-    var physicalLaws = function (objectId : string, targetId : string) : boolean {
+    /**
+     * Indicates whether an object respects the physical laws.
+     * @param  {string}  objectId the id of the object
+     * @param  {string}  targetId the id of the potential future location of the
+     *                            object
+     * @return {boolean}          true if the object respects the physical laws,
+     *                            false otherwise
+     */
+    var physicalLaws = function (objectId : string,
+        targetId : string) : boolean {
       if (targetId == 'floor')
         return (action == 'ontop' || action == 'above') && (cmd.location == null
             || cmd.location.entity.object.form == 'floor');
@@ -245,7 +278,10 @@ module Interpreter {
       return true;
     }
 
-    var getInterpretationLocationEntityAll = function () : void {
+    /**
+     * Sets the interpretation with a location having a "all" quantifier.
+     */
+    var locationEntityAll = function () : void {
       var currentTargets : number[] = [];
       var targetMinValue : number = physicalLaws('', targets[0]) ? 0 : 1;
 
@@ -255,26 +291,25 @@ module Interpreter {
       while (interpretation.length < Math.pow(targets.length - targetMinValue,
           objects.length)) {
         var currentConjunction : Literal[] = [];
-        for (var i = 0; i < objects.length; i++) {
-          if (physicalLaws(objects[i], targets[currentTargets[i]])) {
+
+        for (var i = 0; i < objects.length; i++)
+          if (physicalLaws(objects[i], targets[currentTargets[i]]))
             currentConjunction.push({polarity: true, relation: action,
                 args: [objects[i], targets[currentTargets[i]]]});
-          }
-        }
 
-        for (var j = currentTargets.length - 1; j >= 0; j--) {
+        for (var j = currentTargets.length - 1; j >= 0; j--)
           if (currentTargets[j] != targets.length - 1) {
             currentTargets[j]++;
             break;
           } else {
             currentTargets[j] = targetMinValue;
           }
-        }
 
         interpretation.push(currentConjunction);
       }
     }
 
+    // Chooses an action in function of the type of command (move or take)
     switch (cmd.command) {
       case 'move':
         action = cmd.location.relation;
@@ -284,11 +319,13 @@ module Interpreter {
         break;
     }
 
+    // Adds all valid objects to objects list
     for (var x = 0; x < state.stacks.length; x++)
       for (var y = 0; y < state.stacks[x].length; y++)
         if (isObjectValid(state.stacks[x][y], x, y, cmd.entity))
           objects.push(state.stacks[x][y]);
 
+    // Adds all valid targets to targets list
     if (cmd.location != null) {
       targets.push('floor');
 
@@ -298,6 +335,7 @@ module Interpreter {
             targets.push(state.stacks[x][y]);
     }
 
+    // Generates the interpretation
     if (cmd.entity.quantifier == 'all') {
       interpretation.push([]);
       for (var object of objects)
@@ -312,7 +350,7 @@ module Interpreter {
         }
     } else if (cmd.location != null
         && cmd.location.entity.quantifier == 'all') {
-      getInterpretationLocationEntityAll();
+      locationEntityAll();
     } else {
       for (var object of objects)
         if (cmd.location != null) {
