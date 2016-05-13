@@ -129,10 +129,12 @@ module Interpreter {
       return y < 0 ? 'floor' : state.stacks[x][y];
     }
 
+
     var isStackValid = function (x : number, entity : Parser.Entity) : boolean {
       if (x >= 0 && x < state.stacks.length)
         for (var y = 0; y < state.stacks[x].length; y++)
-          if (isObjectValid(state.stacks[x][y], x, y, entity))
+          if (isObjectValid(state.stacks[x][y], x, y,
+              entity))
             return true;
 
       return false;
@@ -144,18 +146,18 @@ module Interpreter {
         return entity.object.form == 'floor'
 
       var object = state.objects[oid];
-      var eObject = entity.object;
+      var commandObject = entity.object;
 
-      if (eObject.color == null && eObject.form == null
-          && eObject.size == null && eObject.object)
-        eObject = entity.object.object;
+      if (commandObject.color == null && commandObject.form == null
+          && commandObject.size == null && commandObject.object)
+        commandObject = entity.object.object;
 
-      if (eObject.size != null && eObject.size != object.size)
+      if (commandObject.size != null && commandObject.size != object.size)
         return false;
-      if (eObject.color != null && eObject.color != object.color)
+      if (commandObject.color != null && commandObject.color != object.color)
         return false;
-      if (eObject.form != null && eObject.form != 'anyform'
-          && eObject.form != object.form)
+      if (commandObject.form != null && commandObject.form != 'anyform'
+          && commandObject.form != object.form)
         return false;
       if (entity.object.location != null)
         switch(entity.object.location.relation) {
@@ -163,70 +165,114 @@ module Interpreter {
             if (!isObjectValid(getObject(x, y - 1), x, y - 1,
                 entity.object.location.entity))
               return false;
+
             break;
           case 'inside':
             if (!isObjectValid(getObject(x, y - 1), x, y - 1,
                 entity.object.location.entity))
-                return false;
+              return false;
+
             break;
           case 'above':
+            for (var i = y - 1; i >= 0; i--)
+              if (isObjectValid(getObject(x, i), x, i,
+                  entity.object.location.entity))
+                return true;
 
-            break;
+            return false;
           case 'under':
+            for (var i = y + 1; i < state.stacks[x].length; i++)
+              if (isObjectValid(getObject(x, i), x, i,
+                  entity.object.location.entity))
+                return true;
 
-            break;
+            return false;
           case 'beside':
-            if (!isStackValid(x-1,entity.object.location.entity)
-                && !isStackValid(x+1,entity.object.location.entity))
+            if (!isStackValid(x - 1, entity.object.location.entity)
+                && !isStackValid(x + 1, entity.object.location.entity))
               return false;
             break;
           case 'leftof':
+            for (var i = x + 1; i < state.stacks.length; i++)
+              if (isStackValid(i, entity.object.location.entity))
+                return true;
 
-            break;
+            return false;
           case 'rightof':
+            for (var i = x - 1; i >= 0; i--)
+              if (isStackValid(i, entity.object.location.entity))
+                return true;
 
-            break;
+            return false;
         }
 
       return true;
     }
 
-    var physicalLaws = function (object : string, target : string) : boolean {
-      if (target == 'floor') {
-        if (!(action == 'ontop' || action == 'above'))
-          return false;
-        if (cmd.location != null && cmd.location.entity.object.form != 'floor')
-          return false;
+    var physicalLaws = function (objectId : string, targetId : string) : boolean {
+      if (targetId == 'floor')
+        return (action == 'ontop' || action == 'above') && (cmd.location == null
+            || cmd.location.entity.object.form == 'floor');
 
-        return true;
-      }
+      var object = state.objects[objectId];
+      var target = state.objects[targetId];
 
-      var obj = state.objects[object];
-      var tar = state.objects[target];
-
-      if (object == target)
+      if (objectId == targetId)
         return false;
-      if (obj.form == 'ball' && (action == 'inside' && tar.form != 'box')
-          || (action == 'ontop' && tar.form != 'floor'))
+      if (object.form == 'ball' && (action == 'inside' && target.form != 'box')
+          || (action == 'ontop' && target.form != 'floor'))
         return false;
-      if (tar.form == 'ball' && (action == 'ontop' || action == 'above'))
+      if (target.form == 'ball' && (action == 'ontop' || action == 'above'))
         return false;
-      if (tar.size == 'small' && obj.size == 'large'
+      if (target.size == 'small' && object.size == 'large'
           && (action == 'ontop' || action == 'inside'))
         return false;
-      if (tar.form == 'box' && tar.size == obj.size
-          && (obj.form == 'pyramid' || obj.form == 'plank' || obj.form == 'box')
+      if (target.form == 'box' && target.size == object.size
+          && (object.form == 'pyramid' || object.form == 'plank'
+              || object.form == 'box')
           && (action == 'ontop' || action == 'inside'))
         return false;
-      if (obj.form == 'box' && (tar.form == 'brick' || tar.form == 'pyramid')
-          && tar.size == 'small' && obj.size == 'small'
+      if (object.form == 'box'
+          && (target.form == 'brick' || target.form == 'pyramid')
+          && target.size == 'small' && object.size == 'small'
           && (action == 'ontop' || action == 'above'))
         return false;
-      if (obj.form == 'box' && obj.size == 'large' && tar.form == 'pyramid'
-          && tar.size == 'large' && (action == 'ontop' || action == 'above'))
+      if (object.form == 'box' && object.size == 'large'
+          && target.form == 'pyramid'
+          && target.size == 'large' && (action == 'ontop' || action == 'above'))
         return false;
 
       return true;
+    }
+
+    var getInterpretationLocationEntityAll = function () : void {
+      var currentTargets : number[] = [];
+      var targetMinValue : number = physicalLaws('', targets[0]) ? 0 : 1;
+
+      for (var i = 0; i < objects.length; i++)
+        currentTargets.push(targetMinValue);
+
+      while (interpretation.length < Math.pow(targets.length - targetMinValue,
+          objects.length)) {
+        var currentConjunction : Literal[] = [];
+        for (var i = 0; i < objects.length; i++) {
+          if (physicalLaws(objects[i], targets[currentTargets[i]])) {
+            currentConjunction.push({polarity: true, relation: action,
+                args: [objects[i], targets[currentTargets[i]]]});
+          }
+        }
+
+        for (var j = currentTargets.length - 1; j >= 0; j--) {
+          if (currentTargets[j] != targets.length - 1) {
+            currentTargets[j]++;
+            break;
+          } else {
+            currentTargets[j] = targetMinValue;
+          }
+        }
+
+        interpretation.push(currentConjunction);
+      }
     }
 
     switch (cmd.command) {
@@ -252,16 +298,33 @@ module Interpreter {
             targets.push(state.stacks[x][y]);
     }
 
-    for (var object of objects)
-      if (cmd.location != null) {
-        for (var target of targets)
-          if (physicalLaws(object, target))
-            interpretation.push([{polarity: true, relation: action,
-                args: [object, target]}]);
-      } else {
-        interpretation.push([{polarity: true, relation: action,
-            args: [object]}]);
-      }
+    if (cmd.entity.quantifier == 'all') {
+      interpretation.push([]);
+      for (var object of objects)
+        if (cmd.location != null) {
+          for (var target of targets)
+            if (physicalLaws(object, target))
+              interpretation[0].push({polarity: true, relation: action,
+                  args: [object, target]});
+        } else {
+          interpretation[0].push({polarity: true, relation: action,
+              args: [object]});
+        }
+    } else if (cmd.location != null
+        && cmd.location.entity.quantifier == 'all') {
+      getInterpretationLocationEntityAll();
+    } else {
+      for (var object of objects)
+        if (cmd.location != null) {
+          for (var target of targets)
+            if (physicalLaws(object, target))
+              interpretation.push([{polarity: true, relation: action,
+                  args: [object, target]}]);
+        } else {
+          interpretation.push([{polarity: true, relation: action,
+              args: [object]}]);
+        }
+    }
 
     if (interpretation.length == 0)
         throw Error("ERROR: No valid interpretation : " + cmd);
