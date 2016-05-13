@@ -174,7 +174,7 @@ module Interpreter {
       if (objectId == 'floor')
         return entity.object.form == 'floor'
 
-      var stateObject = state.objects[objectId]; // The object in the world state
+      var stateObject = state.objects[objectId]; // The object in the state
       var commandObject = entity.object; // The given object
 
       if (commandObject.color == null && commandObject.form == null
