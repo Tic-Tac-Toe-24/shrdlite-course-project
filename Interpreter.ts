@@ -2,6 +2,8 @@
 ///<reference path="Parser.ts"/>
 
 import Entity = Parser.Entity;
+import ParseResult = Parser.ParseResult;
+import Command = Parser.Command;
 
 /**
  * Interpreter module
@@ -33,14 +35,19 @@ module Interpreter {
   ////////////////////////////////////////////////////////////////////////////
 
   /**
-   Top-level function for the Interpreter. It calls `interpretCommand` for each
-   possible parse of the command. No need to change this one.
-   * @param parses List of parses produced by the Parser.
-   * @param currentState The current state of the world.
-   * @returns Augments ParseResult with a list of interpretations.
-   *          Each interpretation is represented by a list of Literals.
+   * Top-level function for the Interpreter. It calls `interpretCommand` for
+   * each possible parse of the command. No need to change this one.
+   * @param  {ParseResult[]}          parses       List of parses produced by
+   *                                               the Parser.
+   * @param  {WorldState}             currentState The current state of the
+   *                                               world.
+   * @return {InterpretationResult[]}              Augments ParseResult with a
+   *                                               list of interpretations.
+   *                                               Each interpretation is
+   *                                               represented by a list of
+   *                                               Literals.
    */
-  export function interpret(parses : Parser.ParseResult[],
+  export function interpret(parses : ParseResult[],
       currentState : WorldState) : InterpretationResult[] {
     var errors : Error[] = [];
     var interpretations : InterpretationResult[] = [];
@@ -107,24 +114,23 @@ module Interpreter {
   ////////////////////////////////////////////////////////////////////////////
 
   /**
-   * The core interpretation function. The code here is just a
-   * template; you should rewrite this function entirely. In this
-   * template, the code produces a dummy interpretation which is not
-   * connected to `cmd`, but your version of the function should
-   * analyse cmd in order to figure out what interpretation to
-   * return.
-   * @param cmd The actual command. Note that it is *not* a string, but rather
-   *            an object of type `Command` (as it has been parsed by the
-   *            parser).
-   * @param state The current state of the world. Useful to look up objects in
-   *              the world.
-   * @returns A list of list of Literal, representing a formula in disjunctive
-   *          normal form (disjunction of conjunctions). See the dummy
-   *          interpetation returned in the code for an example, which means
-   *          ontop(a,floor) AND holding(b).
+   * The core interpretation function. The code here is just a template; you
+   * should rewrite this function entirely. In this template, the code produces
+   * a dummy interpretation which is not connected to `cmd`, but your version of
+   * the function should analyse cmd in order to figure out what interpretation
+   * to return.
+   * @param  {Command}    cmd   The actual command. Note that it is *not* a
+   *                            string, but rather an object of type `Command`
+   *                            (as it has been parsed by the parser).
+   * @param  {WorldState} state The current state of the world. Useful to
+   *                            look up objects in the world.
+   * @return {DNFFormula}       A list of list of Literal, representing a
+   *                            formula in disjunctive normal form (disjunction
+   *                            of conjunctions). See the dummy interpetation
+   *                            returned in the code for an example, which means
+   *                            ontop(a,floor) AND holding(b).
    */
-  function interpretCommand(cmd : Parser.Command,
-      state : WorldState) : DNFFormula {
+  function interpretCommand(cmd : Command, state : WorldState) : DNFFormula {
     var action : string;
     var objects : string[] = [];
     var targets : string[] = [];
