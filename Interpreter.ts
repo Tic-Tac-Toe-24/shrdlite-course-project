@@ -114,10 +114,8 @@ module Interpreter {
   ////////////////////////////////////////////////////////////////////////////
 
   /**
-   * The core interpretation function. The code here is just a template; you
-   * should rewrite this function entirely. In this template, the code produces
-   * a dummy interpretation which is not connected to `cmd`, but your version of
-   * the function should analyse cmd in order to figure out what interpretation
+   * The core interpretation function.
+   * The function analyses the cmd in order to figure out what interpretation
    * to return.
    * @param  {Command}    cmd   The actual command. Note that it is *not* a
    *                            string, but rather an object of type `Command`
