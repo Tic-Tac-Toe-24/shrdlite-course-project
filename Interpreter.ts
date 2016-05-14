@@ -370,6 +370,7 @@ module Interpreter {
         }
     }
 
+    // An error is thrown if no valid interpretation has been found
     if (interpretation.length == 0)
         throw Error("ERROR: No valid interpretation : " + cmd);
 
