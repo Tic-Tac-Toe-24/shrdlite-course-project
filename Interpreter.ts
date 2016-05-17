@@ -1,5 +1,6 @@
 ///<reference path="World.ts"/>
 ///<reference path="Parser.ts"/>
+///<reference path="InterpretationStrategy.ts"/>
 
 import Entity = Parser.Entity;
 import ParseResult = Parser.ParseResult;
@@ -8,25 +9,23 @@ import Command = Parser.Command;
 /**
  * Interpreter module
  *
- * The goal of the Interpreter module is to interpret a sentence
- * written by the user in the context of the current world state. In
- * particular, it must figure out which objects in the world,
- * i.e. which elements in the `objects` field of WorldState, correspond
- * to the ones referred to in the sentence.
+ * The goal of the Interpreter module is to interpret a sentence written by the
+ * user in the context of the current world state. In particular, it must figure
+ * out which objects in the world, i.e. which elements in the `objects` field of
+ * WorldState, correspond to the ones referred to in the sentence.
  *
- * Moreover, it has to derive what the intended goal state is and
- * return it as a logical formula described in terms of literals, where
- * each literal represents a relation among objects that should
- * hold. For example, assuming a world state where "a" is a ball and
- * "b" is a table, the command "put the ball on the table" can be
- * interpreted as the literal ontop(a,b). More complex goals can be
- * written using conjunctions and disjunctions of these literals.
+ * Moreover, it has to derive what the intended goal state is and return it as a
+ * logical formula described in terms of literals, where each literal represents
+ * a relation among objects that should hold. For example, assuming a world
+ * state where "a" is a ball and "b" is a table, the command "put the ball on
+ * the table" can be interpreted as the literal ontop(a,b). More complex goals
+ * can be written using conjunctions and disjunctions of these literals.
  *
- * In general, the module can take a list of possible parses and return
- * a list of possible interpretations, but the code to handle this has
- * already been written for you. The only part you need to implement is
- * the core interpretation function, namely `interpretCommand`, which produces a
- * single interpretation for a single command.
+ * In general, the module can take a list of possible parses and return a list
+ * of possible interpretations, but the code to handle this has already been
+ * written for you. The only part you need to implement is the core
+ * interpretation function, namely `interpretCommand`, which produces a single
+ * interpretation for a single command.
  */
 module Interpreter {
 
@@ -74,7 +73,7 @@ module Interpreter {
   }
 
   export type DNFFormula = Conjunction[];
-  type Conjunction = Literal[];
+  export type Conjunction = Literal[];
 
   /**
    * A Literal represents a relation that is intended to
@@ -112,195 +111,6 @@ module Interpreter {
   ////////////////////////////////////////////////////////////////////////////
   //                           Private functions                            //
   ////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Indicates whether all the values of a given array match a given function.
-   * @param  {any[]}            array the array
-   * @param  {(any) => boolean} match the function
-   * @return {boolean}          true if all the values match the given
-   *                            function, false otherwise
-   */
-  function allValues(array: any[], match: (value: any) => boolean): boolean {
-    for (let element of array)
-      if (!match(element))
-        return false;
-
-    return true;
-  }
-
-  /**
-   * Indicates whether any value of a given array match a given function.
-   * @param  {any[]}            array the array
-   * @param  {(any) => boolean} match the function
-   * @return {boolean}          true if all the values match the given
-   *                            function, false otherwise
-   */
-  function anyValue(array: any[], match: (value: any) => boolean): boolean {
-    for (let element of array)
-      if (match(element))
-        return true;
-
-    return false;
-  }
-
-  /**
-   * Removes all the values matching a given function in a given array.
-   * @param  {any[]}            array the array
-   * @param  {(any) => boolean} match the function
-   */
-  function removeAllValues(array: any[], match: (value: any) => boolean): void {
-    for (let i = array.length - 1; i >= 0; i--)
-      if (match(array[i]))
-        array.splice(i, 1);
-  }
-
-  interface InterpretationStrategy {
-    getInterpretation(
-      objects: string[],
-      targets: string[],
-      action: string,
-      physicalLaws: (objectId: string, targetId: string) => boolean
-    ): DNFFormula;
-  }
-
-  class TakeStrategy implements InterpretationStrategy {
-    getInterpretation(
-      objects: string[],
-      targets: string[],
-      action: string,
-      physicalLaws: (objectId: string, targetId: string) => boolean
-    ): DNFFormula {
-      let interpretation: DNFFormula = [];
-
-      for (let object of objects)
-        interpretation.push([{polarity: true, relation: 'holding',
-          args: [object]}]);
-
-      return interpretation;
-    }
-  }
-
-  class PutAnyToOneStrategy implements InterpretationStrategy {
-    getInterpretation(
-      objects: string[],
-      targets: string[],
-      action: string,
-      physicalLaws: (objectId: string, targetId: string) => boolean
-    ): DNFFormula {
-      let interpretation: DNFFormula = [];
-
-      for (let object of objects)
-        for (let target of targets)
-          if (physicalLaws(object, target))
-            interpretation.push([{polarity: true, relation: action,
-                args: [object, target]}]);
-
-      return interpretation;
-    }
-  }
-
-  class PutAllToAnyStrategy implements InterpretationStrategy {
-    getInterpretation(
-      objects: string[],
-      targets: string[],
-      action: string,
-      physicalLaws: (objectId: string, targetId: string) => boolean
-    ): DNFFormula {
-      let interpretation: DNFFormula = [];
-      let currentTargets: number[] = [];
-      let exitWhile: boolean = false;
-
-      for (let i = 0; i < objects.length; i++)
-        currentTargets.push(0);
-
-      while (true) {
-        let currentConjunction: Conjunction = [];
-
-        for (let i = 0; i < objects.length; i++)
-          if (physicalLaws(objects[i], targets[currentTargets[i]]))
-            currentConjunction.push({polarity: true, relation: action,
-                args: [objects[i], targets[currentTargets[i]]]});
-
-        if (exitWhile)
-          break;
-
-        if (allValues(currentTargets, (e) => e == targets.length - 1))
-          exitWhile = true;
-
-        for (let j = currentTargets.length - 1; j >= 0; j--)
-          if (currentTargets[j] != targets.length - 1) {
-            currentTargets[j]++;
-            break;
-          } else {
-            currentTargets[j] = 0;
-          }
-
-        interpretation.push(currentConjunction);
-      }
-
-      if (anyValue(interpretation, (e) => e.length > 1))
-        removeAllValues(interpretation, (e) => e.length == 1);
-
-      return interpretation;
-    }
-  }
-
-  class PutAnyToAllStrategy implements InterpretationStrategy {
-    getInterpretation(
-      objects: string[],
-      targets: string[],
-      action: string,
-      physicalLaws: (objectId: string, targetId: string) => boolean
-    ): DNFFormula {
-      return new PutAllToAnyStrategy()
-          .getInterpretation(objects, targets, action, physicalLaws);
-    }
-  }
-
-  class PutAllToAllStrategy implements InterpretationStrategy {
-    getInterpretation(
-      objects: string[],
-      targets: string[],
-      action: string,
-      physicalLaws: (objectId: string, targetId: string) => boolean
-    ): DNFFormula {
-      let interpretation: DNFFormula = [];
-      let conjunction: Conjunction = [];
-
-      for (let object of objects)
-        for (let target of targets)
-          if (physicalLaws(object, target))
-            conjunction.push({polarity: true, relation: action,
-                args: [object, target]});
-
-      interpretation.push(conjunction);
-
-      return interpretation;
-    }
-  }
-
-  function getInterpretationStrategy(cmd: Command): InterpretationStrategy {
-    if (cmd.location == null) {
-      return new TakeStrategy();
-    } else {
-      let entityQuantifier: string = cmd.entity.quantifier;
-      let locationQuantifier: string = cmd.location.entity.quantifier;
-
-      if (entityQuantifier == 'all'
-          && (locationQuantifier == 'the' || locationQuantifier == 'any')) {
-        return new PutAllToAnyStrategy();
-      } else if (entityQuantifier == 'any'
-          && (locationQuantifier == 'the' || locationQuantifier == 'any')) {
-        return new PutAnyToOneStrategy();
-      } else if (entityQuantifier == 'all' && locationQuantifier == 'all') {
-        return new PutAllToAllStrategy();
-      } else if (entityQuantifier == 'any' && locationQuantifier == 'all') {
-        return new PutAnyToAllStrategy();
-      }
-
-      throw Error("ERROR: No valid interpretation: " + cmd);
-    }
-  }
 
   /**
    * Returns the object at a given position.
