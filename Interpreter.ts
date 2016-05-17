@@ -47,13 +47,13 @@ module Interpreter {
    *                                               represented by a list of
    *                                               Literals.
    */
-  export function interpret(parses : ParseResult[],
-      currentState : WorldState) : InterpretationResult[] {
-    var errors : Error[] = [];
-    var interpretations : InterpretationResult[] = [];
+  export function interpret(parses: ParseResult[],
+      currentState: WorldState): InterpretationResult[] {
+    let errors: Error[] = [];
+    let interpretations: InterpretationResult[] = [];
     parses.forEach((parseresult) => {
       try {
-        var result : InterpretationResult = <InterpretationResult>parseresult;
+        let result: InterpretationResult = <InterpretationResult>parseresult;
         result.interpretation = interpretCommand(result.parse, currentState);
         interpretations.push(result);
       } catch(err) {
@@ -70,7 +70,7 @@ module Interpreter {
   }
 
   export interface InterpretationResult extends Parser.ParseResult {
-    interpretation : DNFFormula;
+    interpretation: DNFFormula;
   }
 
   export type DNFFormula = Conjunction[];
@@ -87,24 +87,24 @@ module Interpreter {
      * literal {polarity: false, relation: "ontop", args:
      * ["a","b"]}.
      */
-    polarity : boolean;
+    polarity: boolean;
 
     /** The name of the relation in question. */
-    relation : string;
+    relation: string;
 
     /** The arguments to the relation. Usually these will be either objects
      * or special strings such as "floor" or "floor-N" (where N is a column) */
-    args : string[];
+    args: string[];
   }
 
-  export function stringify(result : InterpretationResult) : string {
+  export function stringify(result: InterpretationResult): string {
     return result.interpretation.map((literals) => {
       return literals.map((lit) => stringifyLiteral(lit)).join(" & ");
       // return literals.map(stringifyLiteral).join(" & ");
     }).join(" | ");
   }
 
-  export function stringifyLiteral(lit : Literal) : string {
+  export function stringifyLiteral(lit: Literal): string {
     return (lit.polarity ? "" : "-") + lit.relation + "(" + lit.args.join(",")
         + ")";
   }
@@ -112,6 +112,350 @@ module Interpreter {
   ////////////////////////////////////////////////////////////////////////////
   //                           Private functions                            //
   ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Indicates whether all the values of a given array match a given function.
+   * @param  {any[]}            array the array
+   * @param  {(any) => boolean} match the function
+   * @return {boolean}          true if all the values match the given
+   *                            function, false otherwise
+   */
+  function allValues(array: any[], match: (value: any) => boolean): boolean {
+    for (let element of array)
+      if (!match(element))
+        return false;
+
+    return true;
+  }
+
+  /**
+   * Indicates whether any value of a given array match a given function.
+   * @param  {any[]}            array the array
+   * @param  {(any) => boolean} match the function
+   * @return {boolean}          true if all the values match the given
+   *                            function, false otherwise
+   */
+  function anyValue(array: any[], match: (value: any) => boolean): boolean {
+    for (let element of array)
+      if (match(element))
+        return true;
+
+    return false;
+  }
+
+  /**
+   * Removes all the values matching a given function in a given array.
+   * @param  {any[]}            array the array
+   * @param  {(any) => boolean} match the function
+   */
+  function removeAllValues(array: any[], match: (value: any) => boolean): void {
+    for (let i = array.length - 1; i >= 0; i--)
+      if (match(array[i]))
+        array.splice(i, 1);
+  }
+
+  interface InterpretationStrategy {
+    getInterpretation(
+      objects: string[],
+      targets: string[],
+      action: string,
+      physicalLaws: (objectId: string, targetId: string) => boolean
+    ): DNFFormula;
+  }
+
+  class TakeStrategy implements InterpretationStrategy {
+    getInterpretation(
+      objects: string[],
+      targets: string[],
+      action: string,
+      physicalLaws: (objectId: string, targetId: string) => boolean
+    ): DNFFormula {
+      let interpretation: DNFFormula = [];
+
+      for (let object of objects)
+        interpretation.push([{polarity: true, relation: 'holding',
+          args: [object]}]);
+
+      return interpretation;
+    }
+  }
+
+  class PutAnyToOneStrategy implements InterpretationStrategy {
+    getInterpretation(
+      objects: string[],
+      targets: string[],
+      action: string,
+      physicalLaws: (objectId: string, targetId: string) => boolean
+    ): DNFFormula {
+      let interpretation: DNFFormula = [];
+
+      for (let object of objects)
+        for (let target of targets)
+          if (physicalLaws(object, target))
+            interpretation.push([{polarity: true, relation: action,
+                args: [object, target]}]);
+
+      return interpretation;
+    }
+  }
+
+  class PutAllToAnyStrategy implements InterpretationStrategy {
+    getInterpretation(
+      objects: string[],
+      targets: string[],
+      action: string,
+      physicalLaws: (objectId: string, targetId: string) => boolean
+    ): DNFFormula {
+      let interpretation: DNFFormula = [];
+      let currentTargets: number[] = [];
+      let exitWhile: boolean = false;
+
+      for (let i = 0; i < objects.length; i++)
+        currentTargets.push(0);
+
+      while (true) {
+        let currentConjunction: Conjunction = [];
+
+        for (let i = 0; i < objects.length; i++)
+          if (physicalLaws(objects[i], targets[currentTargets[i]]))
+            currentConjunction.push({polarity: true, relation: action,
+                args: [objects[i], targets[currentTargets[i]]]});
+
+        if (exitWhile)
+          break;
+
+        if (allValues(currentTargets, (e) => e == targets.length - 1))
+          exitWhile = true;
+
+        for (let j = currentTargets.length - 1; j >= 0; j--)
+          if (currentTargets[j] != targets.length - 1) {
+            currentTargets[j]++;
+            break;
+          } else {
+            currentTargets[j] = 0;
+          }
+
+        interpretation.push(currentConjunction);
+      }
+
+      if (anyValue(interpretation, (e) => e.length > 1))
+        removeAllValues(interpretation, (e) => e.length == 1);
+
+      return interpretation;
+    }
+  }
+
+  class PutAnyToAllStrategy implements InterpretationStrategy {
+    getInterpretation(
+      objects: string[],
+      targets: string[],
+      action: string,
+      physicalLaws: (objectId: string, targetId: string) => boolean
+    ): DNFFormula {
+      return new PutAllToAnyStrategy()
+          .getInterpretation(objects, targets, action, physicalLaws);
+    }
+  }
+
+  class PutAllToAllStrategy implements InterpretationStrategy {
+    getInterpretation(
+      objects: string[],
+      targets: string[],
+      action: string,
+      physicalLaws: (objectId: string, targetId: string) => boolean
+    ): DNFFormula {
+      let interpretation: DNFFormula = [];
+      let conjunction: Conjunction = [];
+
+      for (let object of objects)
+        for (let target of targets)
+          if (physicalLaws(object, target))
+            conjunction.push({polarity: true, relation: action,
+                args: [object, target]});
+
+      interpretation.push(conjunction);
+
+      return interpretation;
+    }
+  }
+
+  function getInterpretationStrategy(cmd: Command): InterpretationStrategy {
+    if (cmd.location == null) {
+      return new TakeStrategy();
+    } else {
+      let entityQuantifier: string = cmd.entity.quantifier;
+      let locationQuantifier: string = cmd.location.entity.quantifier;
+
+      if (entityQuantifier == 'all'
+          && (locationQuantifier == 'the' || locationQuantifier == 'any')) {
+        return new PutAllToAnyStrategy();
+      } else if (entityQuantifier == 'any'
+          && (locationQuantifier == 'the' || locationQuantifier == 'any')) {
+        return new PutAnyToOneStrategy();
+      } else if (entityQuantifier == 'all' && locationQuantifier == 'all') {
+        return new PutAllToAllStrategy();
+      } else if (entityQuantifier == 'any' && locationQuantifier == 'all') {
+        return new PutAnyToAllStrategy();
+      }
+
+      throw Error("ERROR: No valid interpretation: " + cmd);
+    }
+  }
+
+  /**
+   * Returns the object at a given position.
+   * @param  {WorldState} state the world state
+   * @param  {number}     x     the id of a stack
+   * @param  {number}     y     the position in the stack
+   * @return {string}           the object or 'floor' if y is negative
+   */
+  function getObject(state: WorldState, x: number, y: number): string {
+    return y < 0 ? 'floor' : state.stacks[x][y];
+  }
+
+  /**
+   * Indicates whether a stack is valid.
+   * @param  {WorldState} state  the world state
+   * @param  {number}     x      the id of a stack
+   * @param  {Entity}     entity an entity with which to compare stack objects
+   * @return {boolean}           true if the stack is valid, false otherwise
+   */
+  function isStackValid(state: WorldState, x: number, entity: Entity): boolean {
+    if (x >= 0 && x < state.stacks.length)
+      for (let y = 0; y < state.stacks[x].length; y++)
+        if (isObjectValid(state, x, y, entity))
+          return true;
+
+    return false;
+  }
+
+  /**
+   * Indicates whether an object is valid.
+   * @param  {WorldState} state    the world state
+   * @param  {number}     x        the id of the stack containing the object
+   * @param  {number}     y        the position of the object in the stack
+   * @param  {Entity}     entity   the entity containing the other object
+   * @return {boolean}             true if the object is valid, false otherwise
+   */
+  function isObjectValid(
+    state: WorldState,
+    x: number,
+    y: number,
+    entity: Entity
+  ): boolean {
+    let objectId: string = getObject(state, x, y);
+
+    if (objectId == 'floor')
+      return entity.object.form == 'floor'
+
+    // The object in the state
+    let stateObject = state.objects[objectId];
+
+    // The given object
+    let commandObject = entity.object;
+
+    if (commandObject.color == null && commandObject.form == null
+        && commandObject.size == null && commandObject.object)
+      commandObject = entity.object.object;
+
+    if (commandObject.size != null && commandObject.size != stateObject.size)
+      return false;
+    if (commandObject.color != null && commandObject.color != stateObject.color)
+      return false;
+    if (commandObject.form != null && commandObject.form != 'anyform'
+        && commandObject.form != stateObject.form)
+      return false;
+    if (entity.object.location != null)
+      switch(entity.object.location.relation) {
+        case 'ontop':
+          if (!isObjectValid(state, x, y - 1, entity.object.location.entity))
+            return false;
+          break;
+        case 'inside':
+          if (!isObjectValid(state, x, y - 1, entity.object.location.entity))
+            return false;
+          break;
+        case 'above':
+          for (let i = y - 1; i >= 0; i--)
+            if (isObjectValid(state, x, i, entity.object.location.entity))
+              return true;
+          return false;
+        case 'under':
+          for (let i = y + 1; i < state.stacks[x].length; i++)
+            if (isObjectValid(state, x, i, entity.object.location.entity))
+              return true;
+          return false;
+        case 'beside':
+          if (!isStackValid(state, x - 1, entity.object.location.entity)
+              && !isStackValid(state, x + 1, entity.object.location.entity))
+            return false;
+          break;
+        case 'leftof':
+          for (let i = x + 1; i < state.stacks.length; i++)
+            if (isStackValid(state, i, entity.object.location.entity))
+              return true;
+          return false;
+        case 'rightof':
+          for (let i = x - 1; i >= 0; i--)
+            if (isStackValid(state, i, entity.object.location.entity))
+              return true;
+          return false;
+      }
+
+    return true;
+  }
+
+  /**
+   * Indicates whether an object respects the physical laws.
+   * @param  {string}  objectId the id of the object
+   * @param  {string}  targetId the id of the potential future location of the
+   *                            object
+   * @return {boolean}          true if the object respects the physical laws,
+   *                            false otherwise
+   */
+  function physicalLaws(
+    cmd: Command,
+    state: WorldState,
+    objectId: string,
+    targetId: string
+  ): boolean {
+    let relation: string = cmd.location.relation;
+
+    if (targetId == 'floor')
+      return (relation == 'ontop' || relation == 'above')
+          && (cmd.location == null
+              || cmd.location.entity.object.form == 'floor');
+
+    let object: Parser.Object = state.objects[objectId];
+    let target: Parser.Object = state.objects[targetId];
+
+    if (objectId == targetId)
+      return false;
+    if (object.form == 'ball' && (relation == 'inside' && target.form != 'box')
+        || (relation == 'ontop' && target.form != 'floor'))
+      return false;
+    if (target.form == 'ball' && (relation == 'ontop' || relation == 'above'))
+      return false;
+    if (target.size == 'small' && object.size == 'large'
+        && (relation == 'ontop' || relation == 'inside'))
+      return false;
+    if (target.form == 'box' && target.size == object.size
+        && (object.form == 'pyramid' || object.form == 'plank'
+            || object.form == 'box')
+        && (relation == 'ontop' || relation == 'inside'))
+      return false;
+    if (object.form == 'box'
+        && (target.form == 'brick' || target.form == 'pyramid')
+        && target.size == 'small' && object.size == 'small'
+        && (relation == 'ontop' || relation == 'above'))
+      return false;
+    if (object.form == 'box' && object.size == 'large'
+        && target.form == 'pyramid' && target.size == 'large'
+        && (relation == 'ontop' || relation == 'above'))
+      return false;
+
+    return true;
+  }
 
   /**
    * The core interpretation function.
@@ -128,249 +472,39 @@ module Interpreter {
    *                            returned in the code for an example, which means
    *                            ontop(a,floor) AND holding(b).
    */
-  function interpretCommand(cmd : Command, state : WorldState) : DNFFormula {
-    var action : string;
-    var objects : string[] = [];
-    var targets : string[] = [];
-    var interpretation : DNFFormula = [];
-
-    /**
-     * Returns the object at the given position.
-     * @param  {number} x the id of a stack
-     * @param  {number} y the position in the stack
-     * @return {string}   the object or 'floor' if y is negative
-     */
-    var getObject = function (x : number, y : number) : string {
-      return y < 0 ? 'floor' : state.stacks[x][y];
-    }
-
-    /**
-     * Indicates whether a stack is valid.
-     * @param  {number} x      the id of a stack
-     * @param  {Entity} entity an entity with which to compare stack objects
-     * @return {boolean}       true if the stack is valid, false otherwise
-     */
-    var isStackValid = function (x : number, entity : Entity) : boolean {
-      if (x >= 0 && x < state.stacks.length)
-        for (var y = 0; y < state.stacks[x].length; y++)
-          if (isObjectValid(state.stacks[x][y], x, y, entity))
-            return true;
-
-      return false;
-    }
-
-    /**
-     * Indicates whether an object is valid.
-     * @param  {string} objectId the id of the object to compare
-     * @param  {number} x        the id of the stack containing the object
-     * @param  {number} y        the position of the object in the stack
-     * @param  {Entity} entity   the entity containing the other object
-     * @return {boolean}         true if the object is valid, false otherwise
-     */
-    var isObjectValid = function (objectId : string, x : number, y : number,
-        entity : Entity) : boolean {
-      if (objectId == 'floor')
-        return entity.object.form == 'floor'
-
-      var stateObject = state.objects[objectId]; // The object in the state
-      var commandObject = entity.object; // The given object
-
-      if (commandObject.color == null && commandObject.form == null
-          && commandObject.size == null && commandObject.object)
-        commandObject = entity.object.object;
-
-      if (commandObject.size != null && commandObject.size != stateObject.size)
-        return false;
-      if (commandObject.color != null
-          && commandObject.color != stateObject.color)
-        return false;
-      if (commandObject.form != null && commandObject.form != 'anyform'
-          && commandObject.form != stateObject.form)
-        return false;
-      if (entity.object.location != null)
-        switch(entity.object.location.relation) {
-          case 'ontop':
-            if (!isObjectValid(getObject(x, y - 1), x, y - 1,
-                entity.object.location.entity))
-              return false;
-
-            break;
-          case 'inside':
-            if (!isObjectValid(getObject(x, y - 1), x, y - 1,
-                entity.object.location.entity))
-              return false;
-
-            break;
-          case 'above':
-            for (var i = y - 1; i >= 0; i--)
-              if (isObjectValid(getObject(x, i), x, i,
-                  entity.object.location.entity))
-                return true;
-
-            return false;
-          case 'under':
-            for (var i = y + 1; i < state.stacks[x].length; i++)
-              if (isObjectValid(getObject(x, i), x, i,
-                  entity.object.location.entity))
-                return true;
-
-            return false;
-          case 'beside':
-            if (!isStackValid(x - 1, entity.object.location.entity)
-                && !isStackValid(x + 1, entity.object.location.entity))
-              return false;
-            break;
-          case 'leftof':
-            for (var i = x + 1; i < state.stacks.length; i++)
-              if (isStackValid(i, entity.object.location.entity))
-                return true;
-
-            return false;
-          case 'rightof':
-            for (var i = x - 1; i >= 0; i--)
-              if (isStackValid(i, entity.object.location.entity))
-                return true;
-
-            return false;
-        }
-
-      return true;
-    }
-
-    /**
-     * Indicates whether an object respects the physical laws.
-     * @param  {string}  objectId the id of the object
-     * @param  {string}  targetId the id of the potential future location of the
-     *                            object
-     * @return {boolean}          true if the object respects the physical laws,
-     *                            false otherwise
-     */
-    var physicalLaws = function (objectId : string,
-        targetId : string) : boolean {
-      if (targetId == 'floor')
-        return (action == 'ontop' || action == 'above') && (cmd.location == null
-            || cmd.location.entity.object.form == 'floor');
-
-      var object = state.objects[objectId];
-      var target = state.objects[targetId];
-
-      if (objectId == targetId)
-        return false;
-      if (object.form == 'ball' && (action == 'inside' && target.form != 'box')
-          || (action == 'ontop' && target.form != 'floor'))
-        return false;
-      if (target.form == 'ball' && (action == 'ontop' || action == 'above'))
-        return false;
-      if (target.size == 'small' && object.size == 'large'
-          && (action == 'ontop' || action == 'inside'))
-        return false;
-      if (target.form == 'box' && target.size == object.size
-          && (object.form == 'pyramid' || object.form == 'plank'
-              || object.form == 'box')
-          && (action == 'ontop' || action == 'inside'))
-        return false;
-      if (object.form == 'box'
-          && (target.form == 'brick' || target.form == 'pyramid')
-          && target.size == 'small' && object.size == 'small'
-          && (action == 'ontop' || action == 'above'))
-        return false;
-      if (object.form == 'box' && object.size == 'large'
-          && target.form == 'pyramid'
-          && target.size == 'large' && (action == 'ontop' || action == 'above'))
-        return false;
-
-      return true;
-    }
-
-    /**
-     * Sets the interpretation with a location having a "all" quantifier.
-     */
-    var locationEntityAll = function () : void {
-      var currentTargets : number[] = [];
-      var targetMinValue : number = physicalLaws('', targets[0]) ? 0 : 1;
-
-      for (var i = 0; i < objects.length; i++)
-        currentTargets.push(targetMinValue);
-
-      while (interpretation.length < Math.pow(targets.length - targetMinValue,
-          objects.length)) {
-        var currentConjunction : Literal[] = [];
-
-        for (var i = 0; i < objects.length; i++)
-          if (physicalLaws(objects[i], targets[currentTargets[i]]))
-            currentConjunction.push({polarity: true, relation: action,
-                args: [objects[i], targets[currentTargets[i]]]});
-
-        for (var j = currentTargets.length - 1; j >= 0; j--)
-          if (currentTargets[j] != targets.length - 1) {
-            currentTargets[j]++;
-            break;
-          } else {
-            currentTargets[j] = targetMinValue;
-          }
-
-        interpretation.push(currentConjunction);
-      }
-    }
-
-    // Chooses an action in function of the type of command (move or take)
-    switch (cmd.command) {
-      case 'move':
-        action = cmd.location.relation;
-        break;
-      case 'take':
-        action = 'holding';
-        break;
-    }
+  function interpretCommand(cmd: Command, state: WorldState): DNFFormula {
+    let relation: string;
+    let objects: string[] = [];
+    let targets: string[] = [];
+    let interpretation: DNFFormula = [];
 
     // Adds all valid objects to objects list
-    for (var x = 0; x < state.stacks.length; x++)
-      for (var y = 0; y < state.stacks[x].length; y++)
-        if (isObjectValid(state.stacks[x][y], x, y, cmd.entity))
+    for (let x = 0; x < state.stacks.length; x++)
+      for (let y = 0; y < state.stacks[x].length; y++)
+        if (isObjectValid(state, x, y, cmd.entity))
           objects.push(state.stacks[x][y]);
 
-    // Adds all valid targets to targets list
+    // Gets the relation and adds all valid targets to targets list (if the
+    // command has a location)
     if (cmd.location != null) {
-      targets.push('floor');
+      relation = cmd.location.relation;
 
-      for (var x = 0; x < state.stacks.length; x++)
-        for (var y = 0; y < state.stacks[x].length; y++)
-          if (isObjectValid(state.stacks[x][y], x, y, cmd.location.entity))
+      if (cmd.location.entity.object.form == 'floor')
+        targets.push('floor');
+
+      for (let x = 0; x < state.stacks.length; x++)
+        for (let y = 0; y < state.stacks[x].length; y++)
+          if (isObjectValid(state, x, y, cmd.location.entity))
             targets.push(state.stacks[x][y]);
     }
 
     // Generates the interpretation
-    if (cmd.entity.quantifier == 'all') {
-      interpretation.push([]);
-      for (var object of objects)
-        if (cmd.location != null) {
-          for (var target of targets)
-            if (physicalLaws(object, target))
-              interpretation[0].push({polarity: true, relation: action,
-                  args: [object, target]});
-        } else {
-          interpretation[0].push({polarity: true, relation: action,
-              args: [object]});
-        }
-    } else if (cmd.location != null
-        && cmd.location.entity.quantifier == 'all') {
-      locationEntityAll();
-    } else {
-      for (var object of objects)
-        if (cmd.location != null) {
-          for (var target of targets)
-            if (physicalLaws(object, target))
-              interpretation.push([{polarity: true, relation: action,
-                  args: [object, target]}]);
-        } else {
-          interpretation.push([{polarity: true, relation: action,
-              args: [object]}]);
-        }
-    }
+    interpretation = getInterpretationStrategy(cmd).getInterpretation(
+      objects, targets, relation, (o, t) => physicalLaws(cmd, state, o, t));
 
     // An error is thrown if no valid interpretation has been found
     if (interpretation.length == 0)
-        throw Error("ERROR: No valid interpretation : " + cmd);
+      throw Error("ERROR: No valid interpretation: " + cmd);
 
     return interpretation;
   }
