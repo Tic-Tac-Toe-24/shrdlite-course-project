@@ -38,3 +38,12 @@ function removeAllValues(array: any[], match: (value: any) => boolean): void {
     if (match(array[i]))
       array.splice(i, 1);
 }
+
+function map(array: any[], transform: (value: any) => any): any[] {
+  let newArray: any[] = [];
+
+  for (let element of array)
+    newArray.push(transform(element));
+
+  return newArray;
+}

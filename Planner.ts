@@ -3,8 +3,7 @@
 ///<reference path="Graph.ts"/>
 ///<reference path="Arrays.ts"/>
 
-import Dictionary = collections.Dictionary;
-import Interpreter = Interpreter.DNFFormula;
+import Literal = Interpreter.Literal;
 
 /**
 * Planner module
@@ -67,118 +66,168 @@ module Planner {
           return state.holding == literal.args[0];
         case 'ontop':
           if (literal.args[1] == 'floor') {
-            state.stacks.forEach(stack => {
+            for (let stack of state.stacks)
               if (stack.indexOf(literal.args[0]) == 0)
                 return true;
-            });
             return false;
           }
 
-          state.stacks.forEach(stack => {
+          for (let stack of state.stacks)
             if (stack.indexOf(literal.args[0])
                 == stack.indexOf(literal.args[1]) - 1)
               return true;
-          });
           return false;
         case 'inside':
           // Same as 'ontop' since it is already checked by the interpreter
-          state.stacks.forEach(stack => {
+          for (let stack of state.stacks)
             if (stack.indexOf(literal.args[0])
                 == stack.indexOf(literal.args[1]) - 1)
               return true;
-          });
           return false;
         case 'above':
           if (literal.args[1] == 'floor')
             return true;
-          state.stacks.forEach(stack => {
+          for (let stack of state.stacks)
             if (stack.indexOf(literal.args[0]) > stack.indexOf(literal.args[1]))
               return true;
-          });
           return false;
         case 'under':
-          state.stacks.forEach(stack => {
+          for (let stack of state.stacks)
             if (stack.indexOf(literal.args[0]) < stack.indexOf(literal.args[1]))
               return true;
-          });
           return false;
         case 'beside':
           for (let x = 0; x < state.stacks.length; x++)
-            if (state.stacks[x].include(literal.args[0])
-              return (x >= 1 && state.stacks[x - 1].includes(literal.args[1]))
+            if (state.stacks[x].indexOf(literal.args[0]) > -1)
+              return (x >= 1
+                      && state.stacks[x - 1].indexOf(literal.args[1]) > -1)
                   || (x < state.stacks.length - 1
-                      && state.stacks[x + 1].includes(literal.args[1]))
+                      && state.stacks[x + 1].indexOf(literal.args[1]) > -1)
           return false;
         case 'leftof':
           for (let x = 0; x < state.stacks.length; x++)
-            if (state.stacks[x].include(literal.args[0])
+            if (state.stacks[x].indexOf(literal.args[0]) > -1)
               for (let x2 = x + 1; x2 < state.stacks.length; x2++)
-                if (state.stacks[x2].includes(literal.args[1]))
+                if (state.stacks[x2].indexOf(literal.args[1]) > -1)
                   return true;
           return false;
         case 'rightof':
           for (let x = 0; x < state.stacks.length; x++)
-            if (state.stacks[x].include(literal.args[0])
+            if (state.stacks[x].indexOf(literal.args[0]) > -1)
               for (let x2 = x - 1; x2 >= 0; x2--)
-                if (state.stacks[x2].includes(literal.args[1]))
+                if (state.stacks[x2].indexOf(literal.args[1]) > -1)
                   return true;
           return false;
       }
+
+      return false;
+    }
+
+    function getPosition(objectId: string, state: WorldState): number[] {
+      for (let x = 0; x < state.stacks.length; x++) {
+        let y: number = state.stacks[x].indexOf(objectId)
+
+        if (y > -1)
+          return [x, y];
+      }
+
+      throw Error("ERROR: Object '" + objectId + "' does not exist.");
+    }
+
+    function distanceFromArm(objectId: string, state: WorldState): number {
+      return Math.abs(getPosition(objectId, state)[0] - state.arm);
+    }
+
+    function objectsAbove(objectId: string, state: WorldState): number {
+      let position: number[] = getPosition(objectId, state);
+
+      return state.stacks[position[0]].length - position[1] - 1;
+    }
+
+    // TODO Refactoring
+    function estimatedCostLiteral(literal: Literal, state: WorldState): number {
+      if (literalHolds(literal, state))
+        return 0;
+
+      switch (literal.relation) {
+        case 'holding':
+          return (state.holding.length == 0 ? 1 : 2)
+              + distanceFromArm(literal.args[0], state);
+        case 'ontop':
+          return (state.holding.length == 0 ? 1 : 2)
+              + (objectsAbove(literal.args[0], state) * 3)
+              + distanceFromArm(literal.args[0], state)
+              + (objectsAbove(literal.args[1], state) * 3)
+              + distanceFromArm(literal.args[1], state);
+        case 'inside':
+          return (state.holding.length == 0 ? 1 : 2)
+              + (objectsAbove(literal.args[0], state) * 3)
+              + distanceFromArm(literal.args[0], state)
+              + (objectsAbove(literal.args[1], state) * 3)
+              + distanceFromArm(literal.args[1], state);
+        case 'above':
+          return (state.holding.length == 0 ? 1 : 2)
+              + (objectsAbove(literal.args[0], state) * 3)
+              + distanceFromArm(literal.args[0], state)
+              + distanceFromArm(literal.args[1], state);
+        case 'under':
+          return (state.holding.length == 0 ? 6 : 8)
+              + (objectsAbove(literal.args[0], state) * 3)
+              + distanceFromArm(literal.args[0], state)
+              + (objectsAbove(literal.args[1], state) * 3)
+              + distanceFromArm(literal.args[1], state);
+        case 'beside':
+          return (state.holding.length == 0 ? 1 : 2)
+              + (objectsAbove(literal.args[0], state) * 3)
+              + (distanceFromArm(literal.args[0], state))
+              + (distanceFromArm(literal.args[1], state) - 1);
+        case 'leftof':
+          return (state.holding.length == 0 ? 1 : 2)
+              + (objectsAbove(literal.args[0], state) * 3)
+              + distanceFromArm(literal.args[0], state)
+              + Math.abs(
+                  getPosition(literal.args[1], state)[0] + 1 - state.arm);
+        case 'rightof':
+          return (state.holding.length == 0 ? 1 : 2)
+              + (objectsAbove(literal.args[0], state) * 3)
+              + distanceFromArm(literal.args[0], state)
+              + Math.abs(
+                  getPosition(literal.args[1], state)[0] - 1 - state.arm);
+      }
+
+      return 0;
     }
 
     class StateNode {
+      constructor (move: string, state: WorldState) { }
+
       move: string;
       state: WorldState;
 
       isGoal(interpretation: DNFFormula): boolean {
-        return anyValue(interpretation, (conjunction) =>
-            allValues(conjunction, (literal) =>
+        return anyValue(interpretation, conjunction =>
+            allValues(conjunction, literal =>
                 literalHolds(literal, this.state)));
       }
 
-      heuristics(): number {
-        return 0;
+      heuristics(interpretation: DNFFormula): number {
+        return Math.min.apply(null, interpretation.map(conjunction =>
+            Math.max.apply(null, conjunction.map(literal =>
+                estimatedCostLiteral(literal, this.state)))));
       }
     }
 
     class StateGraph implements Graph<StateNode> {
-      /*
-      constructor (state: WorldState) {
-        for (let move of possibleMoves(state)) {
-          //this.addEdge(new StateNode('', state), new StateNode(move, newWorldState(state, move)))
-        }
-      }
-
-      neighbours: Dictionary<StateNode, StateNode[]> = new Dictionary<StateNode, StateNode[]>();
-
-      addEdge(first: StateNode, second: StateNode): void {
-        let nodes = this.neighbours.getValue(first);
-
-        if (nodes == undefined) {
-          this.neighbours.setValue(first, [second]);
-        } else {
-          nodes.push(second);
-          this.neighbours.setValue(first, nodes);
-        }
-
-        addEdge(second, first);
-      }
-      */
-
       // TODO Return all possible moves (on the fly)
       // Niklas
       outgoingEdges(node: StateNode): Edge<StateNode>[] {
-        // let edges: Edge<StateNode>[] = [];
-        // this.neighbours.getValue(node).forEach(neighbour => {
-        //   edges.push(new Edge<StateNode>(node, neighbour, 1));
-        // });
-        //
-        // return edges;
+        return null;
       }
 
-      // containsState(state: WorldState): boolean {
-      //
-      // }
+      compareNodes: ICompareFunction<StateNode> = function (first, second) {
+        // Unneeded
+        return 0;
+      }
     }
 
     /**
@@ -199,58 +248,19 @@ module Planner {
      * "d". The code shows how to build a plan. Each step of the plan can
      * be added using the `push` method.
      */
-    // TODO Call A* and get the moves from the path (Node.move), plan.push()
-    // graph : Graph<Node>               ====> new StateGraph()
-    // start : Node                      ====> start = new StateNode('', state)
-    // goal : (n : Node) => boolean      ====> (n) => n.isGoal()
-    // heuristics : (n : Node) => number ====> (n) => n.heuristics()
-    // timeout : number                  ====> 5
-    //
-    // Philémon
-    function planInterpretation(interpretation : DNFFormula, state : WorldState) : string[] {
-        // This function returns a dummy plan involving a random stack
-        do {
-            var pickstack = Math.floor(Math.random() * state.stacks.length);
-        } while (state.stacks[pickstack].length == 0);
-        var plan : string[] = [];
+    function planInterpretation(
+      interpretation: DNFFormula,
+      state: WorldState
+    ): string[] {
+      let result: SearchResult<StateNode> = aStarSearch(
+        new StateGraph(),
+        new StateNode('', state),
+        node => node.isGoal(interpretation),
+        node => node.heuristics(interpretation),
+        5
+      );
 
-        // First move the arm to the leftmost nonempty stack
-        if (pickstack < state.arm) {
-            plan.push("Moving left");
-            for (var i = state.arm; i > pickstack; i--) {
-                plan.push("l");
-            }
-        } else if (pickstack > state.arm) {
-            plan.push("Moving right");
-            for (var i = state.arm; i < pickstack; i++) {
-                plan.push("r");
-            }
-        }
-
-        // Then pick up the object
-        var obj = state.stacks[pickstack][state.stacks[pickstack].length-1];
-        plan.push("Picking up the " + state.objects[obj].form,
-                  "p");
-
-        if (pickstack < state.stacks.length-1) {
-            // Then move to the rightmost stack
-            plan.push("Moving as far right as possible");
-            for (var i = pickstack; i < state.stacks.length-1; i++) {
-                plan.push("r");
-            }
-
-            // Then move back
-            plan.push("Moving back");
-            for (var i = state.stacks.length-1; i > pickstack; i--) {
-                plan.push("l");
-            }
-        }
-
-        // Finally put it down again
-        plan.push("Dropping the " + state.objects[obj].form,
-                  "d");
-
-        return plan;
+      return result.path.map(node => node.move);
     }
 
     function getPossibleMoves(state: WorldState): string[] {
@@ -273,11 +283,11 @@ module Planner {
 
     // Dominik
     function canDrop(state: WorldState): boolean {
-
+      return false;
     }
 
     // Dominik
     function newWorldState(state: WorldState, move: string): WorldState {
-
+      return null;
     }
 }
