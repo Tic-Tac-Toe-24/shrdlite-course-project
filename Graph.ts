@@ -99,60 +99,56 @@ function aStarSearch<Node> (
   costs.setValue(start, 0);
   openNodes.add(start);
 
-  try {
-    // Continues looking through the set of open nodes as long as theres any left.
-    while (!openNodes.isEmpty()) {
-      if (!((startTime + Date.now()) < timeout)) {
-        // Throws an exception in case of timed out
-        throw new TimeOutException(timeout);
+  // Continues looking through the set of open nodes as long as theres any left.
+  while (!openNodes.isEmpty()) {
+    if (!((startTime + Date.now()) < timeout)) {
+      // Throws an exception in case of timed out
+      throw new TimeOutException(timeout);
+    }
+    var currentNode = openNodes.removeRoot();
+    closedNodes.add(currentNode);
+
+    // Optimal path found.
+    if (goal(currentNode)) {
+      var path : LinkedList<Node> = new LinkedList<Node>();
+      // Collects path nodes
+      while (!path.contains(start)) {
+        path.add(currentNode);
+        currentNode = predecessors.getValue(currentNode);
       }
-      var currentNode = openNodes.removeRoot();
-      closedNodes.add(currentNode);
+      // Creates result.
+      result.path = path.toArray().reverse();
+      result.cost = costs.getValue(result.path[result.path.length-1]);
+      break;
+    }
 
-      // Optimal path found.
-      if (goal(currentNode)) {
-        var path : LinkedList<Node> = new LinkedList<Node>();
-        // Collects path nodes
-        while (!path.contains(start)) {
-          path.add(currentNode);
-          currentNode = predecessors.getValue(currentNode);
-        }
-        // Creates result.
-        result.path = path.toArray().reverse();
-        result.cost = costs.getValue(result.path[result.path.length-1]);
-        break;
-      }
+    // Goes through every neighbouring node.
+    for (var edge of graph.outgoingEdges(currentNode)) {
+      if (!closedNodes.contains(edge.to)) {
+        // Found the currently most optimal path to the neighbour.
+        if (!costs.containsKey(edge.to) || costs.getValue(currentNode)
+          + edge.cost < costs.getValue(edge.to)) {
+          // Sets the neighbours predecessor to the current Node.
+          predecessors.setValue(edge.to, currentNode);
 
-      // Goes through every neighbouring node.
-      for (var edge of graph.outgoingEdges(currentNode)) {
-        if (!closedNodes.contains(edge.to)) {
-          // Found the currently most optimal path to the neighbour.
-          if (!costs.containsKey(edge.to) || costs.getValue(currentNode)
-            + edge.cost < costs.getValue(edge.to)) {
-            // Sets the neighbours predecessor to the current Node.
-            predecessors.setValue(edge.to, currentNode);
+          // Sets the g-cost for the neighbour.
+          costs.setValue(edge.to, costs.getValue(currentNode) + edge.cost);
 
-            // Sets the g-cost for the neighbour.
-            costs.setValue(edge.to, costs.getValue(currentNode) + edge.cost);
-
-            // Adds or updates the position in the heap.
-            if (!openNodes.contains(edge.to)) {
-              openNodes.add(edge.to);
-            } else {
-              openNodes.update(edge.to);
-            }
+          // Adds or updates the position in the heap.
+          if (!openNodes.contains(edge.to)) {
+            openNodes.add(edge.to);
+          } else {
+            openNodes.update(edge.to);
           }
         }
       }
     }
-  } catch (e) {
-    console.log((<TimeOutException>e).message);
   }
 
   return result;
 }
 
-// TimeOut excetption
+// TimeOut exception
 class TimeOutException {
     status : number;
     message : string = "Timed Out";
@@ -160,6 +156,7 @@ class TimeOutException {
         this.status = status;
     }
 }
+
 // Modified Heap datastructure used to repressent the open set of nodes.
 class Heap<T> {
   private data : T[] = [];
