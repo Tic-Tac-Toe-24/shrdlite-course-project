@@ -291,7 +291,38 @@ module Planner {
     // TODO Return all possible moves (on the fly)
     // Niklas
     outgoingEdges(node: StateNode): Edge<StateNode>[] {
-      return null;
+      let edges : Edge<StateNode>[] = [];
+      let moves : string[] = getPossibleMoves(node.state);
+      let edge : Edge<StateNode>;
+      if(moves.indexOf('p') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      if(moves.indexOf('d') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      if(moves.indexOf('l') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      if(moves.indexOf('r') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      return edges;
     }
 
     compareNodes: ICompareFunction<StateNode> = function (first, second) {
