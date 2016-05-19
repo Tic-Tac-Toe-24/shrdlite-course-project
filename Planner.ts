@@ -252,8 +252,8 @@ module Planner {
      */
     constructor (move: string, state: WorldState) { }
 
-    move: string;
-    state: WorldState;
+    private move: string;
+    private state: WorldState;
 
     /**
      * Indicates whether the node is a goal node (i.e. the given interpretation
@@ -288,8 +288,12 @@ module Planner {
    * the fly by the search algorithm.
    */
   class StateGraph implements Graph<StateNode> {
-    // TODO Return all possible moves (on the fly)
-    // Niklas
+
+    /**
+     * Returns the outgoing edges of a given node in the graph.
+     * @param  {StateNode}       node the node
+     * @return {Edge<StateNode>}      the edges
+     */
     outgoingEdges(node: StateNode): Edge<StateNode>[] {
       let edges : Edge<StateNode>[] = [];
       let moves : string[] = getPossibleMoves(node.state);
@@ -325,8 +329,8 @@ module Planner {
       return edges;
     }
 
+    // Unneeded
     compareNodes: ICompareFunction<StateNode> = function (first, second) {
-      // Unneeded
       return 0;
     }
   }
