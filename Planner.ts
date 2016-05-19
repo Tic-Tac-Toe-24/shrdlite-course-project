@@ -29,7 +29,7 @@ module Planner {
    *                                                  interpretations
    * @param  {WorldState}             currentState    the current state of the
    *                                                  world
-   * @return {PlannerResult[]}                        Augments
+   * @return {PlannerResult[]}                        augments
    *         																					InterpretationResult with
    *         																					a plan represented by a
    *         																					list of strings
@@ -362,6 +362,11 @@ module Planner {
     return result.path.map(node => node.move);
   }
 
+  /**
+   * Returns all the possible moves from a given state.
+   * @param  {WorldState} state the world state
+   * @return {string[]}         the possible moves
+   */
   function getPossibleMoves(state: WorldState): string[] {
     let possibleMoves: string[] = [];
 
@@ -381,11 +386,25 @@ module Planner {
   }
 
   // Dominik
+  /**
+   * Indicates whether the arm of a given world state can drop the object it
+   * holds.
+   * @param  {WorldState} state the world state
+   * @return {boolean}          true if the arm can drop the object, false
+   *                            otherwise
+   */
   function canDrop(state: WorldState): boolean {
     return false;
   }
 
   // Dominik
+  /**
+   * Returns a new world state from a given world state on which a given move is
+   * applied.
+   * @param  {WorldState} state the world state
+   * @param  {string}     move  the move
+   * @return {WorldState}       the new world state
+   */
   function newWorldState(state: WorldState, move: string): WorldState {
     return null;
   }
