@@ -289,6 +289,8 @@ module Interpreter {
     let targets: string[] = [];
     let interpretation: DNFFormula = [];
 
+    console.log(JSON.stringify(cmd));
+
     // Adds all valid objects to objects list
     for (let x = 0; x < state.stacks.length; x++)
       for (let y = 0; y < state.stacks[x].length; y++)

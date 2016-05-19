@@ -113,4 +113,12 @@ module Interpreter {
        }
    );
 
+   allTestCases.push(
+     {world: "small",
+      utterance: "take a red object on a red object on a yellow object on the floor",
+      interpretations: [["inside(e,k) & inside(f,k)", "inside(e,l) & inside(f,k)",
+                         "inside(e,k) & inside(f,l)", "inside(e,l) & inside(f,l)"]]
+     }
+   );
+
 }
