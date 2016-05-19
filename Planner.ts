@@ -276,7 +276,7 @@ module Planner {
      * @param  {DNFFormula} interpretation the interpretation
      * @return {number}                    the heuristic
      */
-    heuristic(interpretation: DNFFormula): number {
+    heuristics(interpretation: DNFFormula): number {
       return Math.min.apply(null, interpretation.map(conjunction =>
           Math.max.apply(null, conjunction.map(literal =>
               estimatedCostLiteral(literal, this.state)))));
@@ -301,22 +301,16 @@ module Planner {
   }
 
   /**
-   * The core planner function. The code here is just a template;
-   * you should rewrite this function entirely. In this template,
-   * the code produces a dummy plan which is not connected to the
-   * argument `interpretation`, but your version of the function
-   * should be such that the resulting plan depends on
-   * `interpretation`.
-   *
-   *
-   * @param interpretation The logical interpretation of the user's desired goal. The plan needs to be such that by executing it, the world is put into a state that satisfies this goal.
-   * @param state The current world state.
-   * @returns Basically, a plan is a
-   * stack of strings, which are either system utterances that
-   * explain what the robot is doing (e.g. "Moving left") or actual
-   * actions for the robot to perform, encoded as "l", "r", "p", or
-   * "d". The code shows how to build a plan. Each step of the plan can
-   * be added using the `push` method.
+   * The core planner function. It simply runs runs the A* search algorithm on a
+   * StateGraph.
+   * @param  {DNFFormula} interpretation the logical interpretation of the
+   *                                     user's desired goal. The plan needs to
+   *                                     be such that by executing it, the world
+   *                                     is put into a state that satisfies this
+   *                                     goal.
+   * @param  {WorldState} state          the current world state
+   * @return {string[]}                  the list of actions the robot should
+   *                                     perform
    */
   function planInterpretation(
     interpretation: DNFFormula,
@@ -326,7 +320,7 @@ module Planner {
       new StateGraph(),
       new StateNode('', state),
       node => node.isGoal(interpretation),
-      node => node.heuristic(interpretation),
+      node => node.heuristics(interpretation),
       5
     );
 
