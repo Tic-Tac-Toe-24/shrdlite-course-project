@@ -29,7 +29,7 @@ module Planner {
    *                                                  interpretations
    * @param  {WorldState}             currentState    the current state of the
    *                                                  world
-   * @return {PlannerResult[]}                        Augments
+   * @return {PlannerResult[]}                        augments
    *         																					InterpretationResult with
    *         																					a plan represented by a
    *         																					list of strings
@@ -252,8 +252,8 @@ module Planner {
      */
     constructor (move: string, state: WorldState) { }
 
-    move: string;
-    state: WorldState;
+    private move: string;
+    private state: WorldState;
 
     /**
      * Indicates whether the node is a goal node (i.e. the given interpretation
@@ -276,7 +276,7 @@ module Planner {
      * @param  {DNFFormula} interpretation the interpretation
      * @return {number}                    the heuristic
      */
-    heuristic(interpretation: DNFFormula): number {
+    heuristics(interpretation: DNFFormula): number {
       return Math.min.apply(null, interpretation.map(conjunction =>
           Math.max.apply(null, conjunction.map(literal =>
               estimatedCostLiteral(literal, this.state)))));
@@ -288,35 +288,64 @@ module Planner {
    * the fly by the search algorithm.
    */
   class StateGraph implements Graph<StateNode> {
-    // TODO Return all possible moves (on the fly)
-    // Niklas
+
+    /**
+     * Returns the outgoing edges of a given node in the graph.
+     * @param  {StateNode}       node the node
+     * @return {Edge<StateNode>}      the edges
+     */
     outgoingEdges(node: StateNode): Edge<StateNode>[] {
-      return null;
+      let edges : Edge<StateNode>[] = [];
+      let moves : string[] = getPossibleMoves(node.state);
+      let edge : Edge<StateNode>;
+      if(moves.indexOf('p') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      if(moves.indexOf('d') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      if(moves.indexOf('l') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      if(moves.indexOf('r') > -1) {
+        edge = new Edge<StateNode>();
+        edge.cost = 1;
+        edge.from = node;
+        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edges.push(edge);
+      }
+      return edges;
     }
 
+    // Unneeded
     compareNodes: ICompareFunction<StateNode> = function (first, second) {
-      // Unneeded
       return 0;
     }
   }
 
   /**
-   * The core planner function. The code here is just a template;
-   * you should rewrite this function entirely. In this template,
-   * the code produces a dummy plan which is not connected to the
-   * argument `interpretation`, but your version of the function
-   * should be such that the resulting plan depends on
-   * `interpretation`.
-   *
-   *
-   * @param interpretation The logical interpretation of the user's desired goal. The plan needs to be such that by executing it, the world is put into a state that satisfies this goal.
-   * @param state The current world state.
-   * @returns Basically, a plan is a
-   * stack of strings, which are either system utterances that
-   * explain what the robot is doing (e.g. "Moving left") or actual
-   * actions for the robot to perform, encoded as "l", "r", "p", or
-   * "d". The code shows how to build a plan. Each step of the plan can
-   * be added using the `push` method.
+   * The core planner function. It simply runs runs the A* search algorithm on a
+   * StateGraph.
+   * @param  {DNFFormula} interpretation the logical interpretation of the
+   *                                     user's desired goal. The plan needs to
+   *                                     be such that by executing it, the world
+   *                                     is put into a state that satisfies this
+   *                                     goal.
+   * @param  {WorldState} state          the current world state
+   * @return {string[]}                  the list of actions the robot should
+   *                                     perform
    */
   function planInterpretation(
     interpretation: DNFFormula,
@@ -326,13 +355,18 @@ module Planner {
       new StateGraph(),
       new StateNode('', state),
       node => node.isGoal(interpretation),
-      node => node.heuristic(interpretation),
+      node => node.heuristics(interpretation),
       5
     );
 
     return result.path.map(node => node.move);
   }
 
+  /**
+   * Returns all the possible moves from a given state.
+   * @param  {WorldState} state the world state
+   * @return {string[]}         the possible moves
+   */
   function getPossibleMoves(state: WorldState): string[] {
     let possibleMoves: string[] = [];
 
@@ -352,6 +386,13 @@ module Planner {
   }
 
   // Dominik
+  /**
+   * Indicates whether the arm of a given world state can drop the object it
+   * holds.
+   * @param  {WorldState} state the world state
+   * @return {boolean}          true if the arm can drop the object, false
+   *                            otherwise
+   */
   function canDrop(state: WorldState): boolean {
     if(state.holding.length == 0)
       return false;
@@ -389,6 +430,13 @@ module Planner {
   }
 
   // Dominik
+  /**
+   * Returns a new world state from a given world state on which a given move is
+   * applied.
+   * @param  {WorldState} state the world state
+   * @param  {string}     move  the move
+   * @return {WorldState}       the new world state
+   */
   function newWorldState(state: WorldState, move: string): WorldState {
     //WorldState newState = new TextWorld(state);
     switch(move)
