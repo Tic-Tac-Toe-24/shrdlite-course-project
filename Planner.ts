@@ -252,8 +252,8 @@ module Planner {
      */
     constructor (move: string, state: WorldState) { }
 
-    private move: string;
-    private state: WorldState;
+    move: string;
+    state: WorldState;
 
     /**
      * Indicates whether the node is a goal node (i.e. the given interpretation
@@ -385,7 +385,6 @@ module Planner {
     return possibleMoves;
   }
 
-  // Dominik
   /**
    * Indicates whether the arm of a given world state can drop the object it
    * holds.
@@ -394,42 +393,45 @@ module Planner {
    *                            otherwise
    */
   function canDrop(state: WorldState): boolean {
-    if(state.holding.length == 0)
+    if (state.holding.length == 0)
       return false;
+
+    let objectHeld = state.objects[state.holding];
+    let stackUnderArm: string[] = state.stacks[state.arm];
+    let objectOnTopOfStack =
+        state.objects[stackUnderArm[stackUnderArm.length - 1]];
+
     // Balls must be in boxes or on the floor, otherwise they roll away.
-    if(state.objects[state.holding].form == 'ball' &&
-      state.stacks[state.arm].length != 0 &&
-      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form != 'box')
+    if (objectHeld.form == 'ball' && stackUnderArm.length != 0
+        && objectOnTopOfStack.form != 'box')
       return false;
     // Balls cannot support anything.
-    if(state.stacks[state.arm].length > 0 &&
-      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'ball')
+    if (stackUnderArm.length > 0 && objectOnTopOfStack.form == 'ball')
       return false;
     // Small objects cannot support large objects.
-    if(state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == 'small' &&
-      state.objects[state.holding].size == 'large')
+    if (objectOnTopOfStack.size == 'small' && objectHeld.size == 'large')
       return false;
     // Boxes cannot contain pyramids, planks or boxes of the same size.
-    if(state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'box' &&
-      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == state.objects[state.holding].size &&
-      (state.objects[state.holding].form == 'pyramid' || state.objects[state.holding].form == 'plank'
-      || state.objects[state.holding].form == 'box'))
+    if (objectOnTopOfStack.form == 'box'
+        && objectOnTopOfStack.size == objectHeld.size
+        && (objectHeld.form == 'pyramid' || objectHeld.form == 'plank'
+            || objectHeld.form == 'box'))
       return false;
     // Small boxes cannot be supported by small bricks or pyramids.
-    if(state.objects[state.holding].form == 'box' && state.objects[state.holding].size == 'small' &&
-      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == 'small' &&
-      (state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'brick' ||
-      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'pyramid'))
+    if (objectHeld.form == 'box' && objectHeld.size == 'small'
+        && objectOnTopOfStack.size == 'small'
+        && (objectOnTopOfStack.form == 'brick'
+            || objectOnTopOfStack.form == 'pyramid'))
       return false;
     // Large boxes cannot be supported by large pyramids.
-    if(state.objects[state.holding].form == 'box' && state.objects[state.holding].size == 'large' &&
-      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'pyramid' &&
-      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == 'large')
+    if (objectHeld.form == 'box' && objectHeld.size == 'large'
+        && objectOnTopOfStack.form == 'pyramid'
+        && objectOnTopOfStack.size == 'large')
       return false;
+
     return true;
   }
 
-  // Dominik
   /**
    * Returns a new world state from a given world state on which a given move is
    * applied.
@@ -438,46 +440,43 @@ module Planner {
    * @return {WorldState}       the new world state
    */
   function newWorldState(state: WorldState, move: string): WorldState {
-    let newWorlds : {[s:string]: WorldState} = {};
-    let a:any = [];
-    for (let x = 0; x < state.stacks.length; x++) {
-        a[x] = [];
+    let newStacks: string[][] = [];
+
+    for (let stack of state.stacks) {
+      let newStack: string[] = [];
+
+      for (let object of stack)
+        newStack.push(object);
+
+      newStacks.push(newStack);
     }
-    for(let i = 0; i < state.stacks.length; i++) {
-      for(let j = 0; j < state.stacks[i].length; j++) {
-        a[i][j] = (state.stacks[i][j]);
-      }
-    }
-    newWorlds[state.toString()] = { "stacks": a,
-      "holding": state.holding,
-      "arm": state.arm,
-      "objects": state.objects,
-      "examples": state.examples
+
+    let newState: WorldState = {
+      stacks: newStacks,
+      holding: state.holding,
+      arm: state.arm,
+      objects: state.objects,
+      examples: state.examples
     };
-    switch(move)
-    {
-      case('l'):
-      {
-        newWorlds[state.toString()].arm--;
-        return newWorlds[state.toString()];
-      }
-      case('r'):
-      {
-        newWorlds[state.toString()].arm++;
-        return newWorlds[state.toString()];
-      }
-      case('d'):
-      {
-        newWorlds[state.toString()].stacks[state.arm].push(newWorlds[state.toString()].holding);
-        newWorlds[state.toString()].holding = null;
-        return newWorlds[state.toString()];
-      }
-      case('p'):
-      {
-        newWorlds[state.toString()].holding = newWorlds[state.toString()].stacks[state.arm].pop();
-        return newWorlds[state.toString()];
-      }
+
+    switch (move) {
+      case 'l':
+        newState.arm--;
+        break;
+      case 'r':
+        newState.arm++;
+        break;
+      case 'd':
+        newState.stacks[state.arm].push(newState.holding);
+        newState.holding = '';
+        break;
+      case 'p':
+        newState.holding = newState.stacks[state.arm].pop();
+        break;
     }
-    return state;
+
+    console.log(newState);
+
+    return newState;
   }
 }
