@@ -353,11 +353,65 @@ module Planner {
 
   // Dominik
   function canDrop(state: WorldState): boolean {
-    return false;
+    if(state.holding.length == 0)
+      return false;
+    // Balls must be in boxes or on the floor, otherwise they roll away.
+    if(state.objects[state.holding].form == 'ball' &&
+      state.stacks[state.arm].length != 0 &&
+      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form != 'box')
+      return false;
+    // Balls cannot support anything.
+    if(state.stacks[state.arm].length > 0 &&
+      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'ball')
+      return false;
+    // Small objects cannot support large objects.
+    if(state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == 'small' &&
+      state.objects[state.holding].size == 'large')
+      return false;
+    // Boxes cannot contain pyramids, planks or boxes of the same size.
+    if(state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'box' &&
+      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == state.objects[state.holding].size &&
+      (state.objects[state.holding].form == 'pyramid' || state.objects[state.holding].form == 'plank'
+      || state.objects[state.holding].form == 'box'))
+      return false;
+    // Small boxes cannot be supported by small bricks or pyramids.
+    if(state.objects[state.holding].form == 'box' && state.objects[state.holding].size == 'small' &&
+      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == 'small' &&
+      (state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'brick' ||
+      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'pyramid'))
+      return false;
+    // Large boxes cannot be supported by large pyramids.
+    if(state.objects[state.holding].form == 'box' && state.objects[state.holding].size == 'large' &&
+      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].form == 'pyramid' &&
+      state.objects[state.stacks[state.arm][state.stacks[state.arm].length-1]].size == 'large')
+      return false;
+    return true;
   }
 
   // Dominik
   function newWorldState(state: WorldState, move: string): WorldState {
+    //WorldState newState = new TextWorld(state);
+    switch(move)
+    {
+      case('l'):
+      {
+        //newState.stacks = state.stacks;
+        //newState.arm = state.arm -1;
+        //newState.holding = state.holding;
+        //newState.objects = state.objects;
+        //newState.examples = state.examples;
+        return null;
+      }
+      case('r'):
+      {
+        //state.arm++;
+        return null;
+      }
+      case('d'):
+        return null;
+      case('p'):
+        return null;
+    }
     return null;
   }
 }
