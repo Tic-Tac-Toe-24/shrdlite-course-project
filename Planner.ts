@@ -438,28 +438,46 @@ module Planner {
    * @return {WorldState}       the new world state
    */
   function newWorldState(state: WorldState, move: string): WorldState {
-    //WorldState newState = new TextWorld(state);
+    let newWorlds : {[s:string]: WorldState} = {};
+    let a:any = [];
+    for (let x = 0; x < state.stacks.length; x++) {
+        a[x] = [];
+    }
+    for(let i = 0; i < state.stacks.length; i++) {
+      for(let j = 0; j < state.stacks[i].length; j++) {
+        a[i][j] = (state.stacks[i][j]);
+      }
+    }
+    newWorlds[state.toString()] = { "stacks": a,
+      "holding": state.holding,
+      "arm": state.arm,
+      "objects": state.objects,
+      "examples": state.examples
+    };
     switch(move)
     {
       case('l'):
       {
-        //newState.stacks = state.stacks;
-        //newState.arm = state.arm -1;
-        //newState.holding = state.holding;
-        //newState.objects = state.objects;
-        //newState.examples = state.examples;
-        return null;
+        newWorlds[state.toString()].arm--;
+        return newWorlds[state.toString()];
       }
       case('r'):
       {
-        //state.arm++;
-        return null;
+        newWorlds[state.toString()].arm++;
+        return newWorlds[state.toString()];
       }
       case('d'):
-        return null;
+      {
+        newWorlds[state.toString()].stacks[state.arm].push(newWorlds[state.toString()].holding);
+        newWorlds[state.toString()].holding = null;
+        return newWorlds[state.toString()];
+      }
       case('p'):
-        return null;
+      {
+        newWorlds[state.toString()].holding = newWorlds[state.toString()].stacks[state.arm].pop();
+        return newWorlds[state.toString()];
+      }
     }
-    return null;
+    return state;
   }
 }

@@ -23,7 +23,7 @@ module Interpreter {
       {world: "small",
        utterance: "take a box",
        interpretations: [["holding(k)", "holding(l)", "holding(m)"]]
-      },
+     },
 
       {world: "small",
        utterance: "put a ball in a box",
@@ -48,7 +48,7 @@ module Interpreter {
       {world: "small",
        utterance: "put a ball left of a ball",
        interpretations: [["leftof(e,f)", "leftof(f,e)"]]
-      },
+     },
 
       {world: "small",
        utterance: "take a white object beside a blue object",
