@@ -289,7 +289,7 @@ module Interpreter {
     let targets: string[] = [];
     let interpretation: DNFFormula = [];
 
-    console.log(cmd);
+    // console.log(cmd);
 
     // Adds all valid objects to objects list
     for (let x = 0; x < state.stacks.length; x++)

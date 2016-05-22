@@ -73,192 +73,29 @@ module Planner {
   ////////////////////////////////////////////////////////////////////////////
 
   /**
-   * Indicates whether a given literal holds in a given world state.
-   * @param  {Literal}    literal the literal
-   * @param  {WorldState} state   the world state
-   * @return {boolean}            true if the literal holds, false otherwise
-   */
-  function literalHolds(literal: Literal, state: WorldState): boolean {
-    switch (literal.relation) {
-      case 'holding':
-        return state.holding == literal.args[0];
-      case 'ontop':
-        if (literal.args[1] == 'floor') {
-          for (let stack of state.stacks)
-            if (stack.indexOf(literal.args[0]) == 0)
-              return true;
-          return false;
-        }
-
-        for (let stack of state.stacks)
-          if (stack.indexOf(literal.args[0])
-              == stack.indexOf(literal.args[1]) - 1)
-            return true;
-        return false;
-      case 'inside':
-        // Same as 'ontop' since it is already checked by the interpreter
-        for (let stack of state.stacks)
-          if (stack.indexOf(literal.args[0])
-              == stack.indexOf(literal.args[1]) - 1)
-            return true;
-        return false;
-      case 'above':
-        if (literal.args[1] == 'floor')
-          return true;
-        for (let stack of state.stacks)
-          if (stack.indexOf(literal.args[0]) > stack.indexOf(literal.args[1]))
-            return true;
-        return false;
-      case 'under':
-        for (let stack of state.stacks)
-          if (stack.indexOf(literal.args[0]) < stack.indexOf(literal.args[1]))
-            return true;
-        return false;
-      case 'beside':
-        for (let x = 0; x < state.stacks.length; x++)
-          if (state.stacks[x].indexOf(literal.args[0]) > -1)
-            return (x >= 1
-                    && state.stacks[x - 1].indexOf(literal.args[1]) > -1)
-                || (x < state.stacks.length - 1
-                    && state.stacks[x + 1].indexOf(literal.args[1]) > -1)
-        return false;
-      case 'leftof':
-        for (let x = 0; x < state.stacks.length; x++)
-          if (state.stacks[x].indexOf(literal.args[0]) > -1)
-            for (let x2 = x + 1; x2 < state.stacks.length; x2++)
-              if (state.stacks[x2].indexOf(literal.args[1]) > -1)
-                return true;
-        return false;
-      case 'rightof':
-        for (let x = 0; x < state.stacks.length; x++)
-          if (state.stacks[x].indexOf(literal.args[0]) > -1)
-            for (let x2 = x - 1; x2 >= 0; x2--)
-              if (state.stacks[x2].indexOf(literal.args[1]) > -1)
-                return true;
-        return false;
-    }
-
-    return false;
-  }
-
-  /**
-   * Returns the position of a given object in a given world state.
-   * @param  {string}     objectId the object
-   * @param  {WorldState} state    the world state
-   * @return {number[]}            a list containing two elements: a stack index
-   *                               and a position in a stack
-   */
-  function getPosition(objectId: string, state: WorldState): number[] {
-    for (let x = 0; x < state.stacks.length; x++) {
-      let y: number = state.stacks[x].indexOf(objectId)
-
-      if (y > -1)
-        return [x, y];
-    }
-
-    throw Error("ERROR: Object '" + objectId + "' does not exist.");
-  }
-
-  /**
-   * Returns the distance of a given object from the arm in the given world
-   * state.
-   * @param  {string}     objectId the object
-   * @param  {WorldState} state    the world state
-   * @return {number}              the distance of the object from the arm
-   */
-  function distanceFromArm(objectId: string, state: WorldState): number {
-    return Math.abs(getPosition(objectId, state)[0] - state.arm);
-  }
-
-  /**
-   * Returns the number of objects above a given object in a given world state.
-   * @param  {string}     objectId the object
-   * @param  {WorldState} state    the world state
-   * @return {number}              the number of objects above the object
-   */
-  function objectsAbove(objectId: string, state: WorldState): number {
-    let position: number[] = getPosition(objectId, state);
-
-    return state.stacks[position[0]].length - position[1] - 1;
-  }
-
-  /**
-   * Returns the estimate cost of a given literal. The estimate cost is
-   * computed using the distance of the object and potentially the target from
-   * the arm. The number of objects above the object to move/take might also
-   * be used as well as the number of objects above the target.
-   * @param  {Literal}    literal the literal
-   * @param  {WorldState} state   the world state
-   * @return {number}             an estimation of the cost to move/take an
-   *                              object
-   */
-  function estimatedCostLiteral(literal: Literal, state: WorldState): number {
-    if (literalHolds(literal, state))
-      return 0;
-
-    let holdingCost: number = (state.holding == null) ? 1 : 2
-
-    if (literal.relation == 'holding') {
-      return holdingCost
-          + distanceFromArm(literal.args[0], state);
-    } else {
-      if (literal.relation == 'ontop' || literal.relation == 'inside') {
-        return holdingCost
-            + (objectsAbove(literal.args[0], state) * 3)
-            + distanceFromArm(literal.args[0], state)
-            + (objectsAbove(literal.args[1], state) * 3)
-            + distanceFromArm(literal.args[1], state);
-      } else if (literal.relation == 'above') {
-        return holdingCost
-            + (objectsAbove(literal.args[0], state) * 3)
-            + distanceFromArm(literal.args[0], state)
-            + distanceFromArm(literal.args[1], state);
-      } else if (literal.relation == 'under') {
-        return (holdingCost == 1 ? 6 : 8)
-            + (objectsAbove(literal.args[0], state) * 3)
-            + distanceFromArm(literal.args[0], state)
-            + (objectsAbove(literal.args[1], state) * 3)
-            + distanceFromArm(literal.args[1], state);
-      } else if (literal.relation == 'beside') {
-        return holdingCost
-            + (objectsAbove(literal.args[0], state) * 3)
-            + (distanceFromArm(literal.args[0], state))
-            + (distanceFromArm(literal.args[1], state) - 1);
-      } else if (literal.relation == 'leftof') {
-        return holdingCost
-            + (objectsAbove(literal.args[0], state) * 3)
-            + distanceFromArm(literal.args[0], state)
-            + Math.abs(
-                getPosition(literal.args[1], state)[0] + 1 - state.arm);
-      } else if (literal.relation == 'rightof') {
-        return holdingCost
-            + (objectsAbove(literal.args[0], state) * 3)
-            + distanceFromArm(literal.args[0], state)
-            + Math.abs(
-                getPosition(literal.args[1], state)[0] - 1 - state.arm);
-      }
-    }
-
-    return 0;
-  }
-
-  /**
-   * Represents a node in a StateGraph. A StateNode has a world state and a move
-   * that leads to this state.
+   * Represents a node in a StateGraph. A StateNode has the arms position, what the arm is holding and the stacks of objects
+   * for this state.
    */
   class StateNode {
+
+    arm : number;
+    holding : string;
+    stacks : string[][];
+
+    private strForm : string;
+
     /**
      * Constructs a new StateNode.
-     * @param  {string}     move  a move
-     * @param  {WorldState} state a world state
+     * @param  {number}     arm  the position of the arm
+     * @param  {string}     holding what the arm is holding
+     * @param  {string}     stacks the stacks of objects
      */
-    constructor (move: string, state: WorldState) {
-      this.move = move;
-      this.state = state;
+    constructor (arm : number, holding : string, stacks : string[][]) {
+      this.arm = arm;
+      this.holding = holding;
+      this.stacks = stacks;
+      this.strForm = JSON.stringify(this);
     }
-
-    move: string;
-    state: WorldState;
 
     /**
      * Indicates whether the node is a goal node (i.e. the given interpretation
@@ -267,10 +104,78 @@ module Planner {
      * @return {boolean}                   true if the node is a goal node,
      *                                     false otherwise
      */
+
     isGoal(interpretation: DNFFormula): boolean {
       return anyValue(interpretation, conjunction =>
           allValues(conjunction, literal =>
-              literalHolds(literal, this.state)));
+              this.literalHolds(literal)));
+    }
+
+      /**
+    * Indicates whether a given literal holds in a given world state.
+    * @param  {Literal}    literal the literal
+    * @return {boolean}            true if the literal holds, false otherwise
+    */
+    private literalHolds(literal: Literal): boolean {
+      switch (literal.relation) {
+        case 'holding':
+          return this.holding == literal.args[0];
+        case 'ontop':
+          if (literal.args[1] == 'floor') {
+            for (let stack of this.stacks)
+              if (stack.indexOf(literal.args[0]) == 0)
+                return true;
+            return false;
+          }
+
+          for (let stack of this.stacks)
+            if (stack.indexOf(literal.args[0])
+                == stack.indexOf(literal.args[1]) + 1 && stack.indexOf(literal.args[0]) > -1 && stack.indexOf(literal.args[1]) > -1)
+              return true;
+          return false;
+        case 'inside':
+          // Same as 'ontop' since it is already checked by the interpreter
+          for (let stack of this.stacks)
+            if (stack.indexOf(literal.args[0])
+                == stack.indexOf(literal.args[1]) + 1 && stack.indexOf(literal.args[0]) > -1 && stack.indexOf(literal.args[1]) > -1)
+              return true;
+          return false;
+        case 'above':
+          if (literal.args[1] == 'floor')
+            return true;
+          for (let stack of this.stacks)
+            if (stack.indexOf(literal.args[0]) > stack.indexOf(literal.args[1]) && stack.indexOf(literal.args[1]) > -1)
+              return true;
+          return false;
+        case 'under':
+          for (let stack of this.stacks)
+            if (stack.indexOf(literal.args[0]) < stack.indexOf(literal.args[1]) && stack.indexOf(literal.args[0]) > -1)
+              return true;
+          return false;
+        case 'beside':
+          for (let x = 0; x < this.stacks.length; x++)
+            if (this.stacks[x].indexOf(literal.args[0]) > -1)
+              return (x >= 1
+                      && this.stacks[x - 1].indexOf(literal.args[1]) > -1)
+                  || (x < this.stacks.length - 1
+                      && this.stacks[x + 1].indexOf(literal.args[1]) > -1)
+          return false;
+        case 'leftof':
+          for (let x = 0; x < this.stacks.length; x++)
+            if (this.stacks[x].indexOf(literal.args[0]) > -1)
+              for (let x2 = x + 1; x2 < this.stacks.length; x2++)
+                if (this.stacks[x2].indexOf(literal.args[1]) > -1)
+                  return true;
+          return false;
+        case 'rightof':
+          for (let x = 0; x < this.stacks.length; x++)
+            if (this.stacks[x].indexOf(literal.args[0]) > -1)
+              for (let x2 = x - 1; x2 >= 0; x2--)
+                if (this.stacks[x2].indexOf(literal.args[1]) > -1)
+                  return true;
+          return false;
+      }
+      return false;
     }
 
     /**
@@ -284,27 +189,149 @@ module Planner {
     heuristics(interpretation: DNFFormula): number {
       return Math.min.apply(null, interpretation.map(conjunction =>
           Math.max.apply(null, conjunction.map(literal =>
-              estimatedCostLiteral(literal, this.state)))));
+              this.estimatedCostLiteral(literal)))));
     }
 
-    // TODO Doc
+    /**
+     * Returns the estimate cost of a given literal. The estimate cost is
+     * computed using the distance of the object and potentially the target from
+     * the arm. The number of objects above the object to move/take might also
+     * be used as well as the number of objects above the target.
+     * @param  {Literal}    literal the literal
+     * @return {number}             an estimation of the cost to move/take an
+     *                              object
+     */
+    private estimatedCostLiteral(literal: Literal): number {
+      if (this.literalHolds(literal))
+        return 0;
+
+      let holdingCost: number = (this.holding == null) ? 1 : 2
+
+      if (literal.relation == 'holding') {
+        return holdingCost
+            + this.distanceFromArm(literal.args[0]);
+      } else {
+        if (literal.relation == 'ontop' || literal.relation == 'inside') {
+          return holdingCost
+              + (this.objectsAbove(literal.args[0]) * 3)
+              + this.distanceFromArm(literal.args[0])
+              + (this.objectsAbove(literal.args[1]) * 3)
+              + this.distanceFromArm(literal.args[1]);
+        } else if (literal.relation == 'above') {
+          return holdingCost
+              + (this.objectsAbove(literal.args[0]) * 3)
+              + this.distanceFromArm(literal.args[0])
+              + this.distanceFromArm(literal.args[1]);
+        } else if (literal.relation == 'under') {
+          return (holdingCost == 1 ? 6 : 8)
+              + (this.objectsAbove(literal.args[0]) * 3)
+              + this.distanceFromArm(literal.args[0])
+              + (this.objectsAbove(literal.args[1]) * 3)
+              + this.distanceFromArm(literal.args[1]);
+        } else if (literal.relation == 'beside') {
+          return holdingCost
+              + (this.objectsAbove(literal.args[0]) * 3)
+              + (this.distanceFromArm(literal.args[0]))
+              + (this.distanceFromArm(literal.args[1]) - 1);
+        } else if (literal.relation == 'leftof') {
+          return holdingCost
+              + (this.objectsAbove(literal.args[0]) * 3)
+              + this.distanceFromArm(literal.args[0])
+              + Math.abs(
+                  this.getPosition(literal.args[1])[0] + 1 - this.arm);
+        } else if (literal.relation == 'rightof') {
+          return holdingCost
+              + (this.objectsAbove(literal.args[0]) * 3)
+              + this.distanceFromArm(literal.args[0])
+              + Math.abs(
+                  this.getPosition(literal.args[1])[0] - 1 - this.arm);
+        }
+      }
+
+      return 0;
+    }
+
+    /**
+     * Returns the position of a given object in a given world state.
+     * @param  {string}     objectId the object
+     * @return {number[]}            a list containing two elements: a stack index
+     *                               and a position in a stack
+     */
+    private getPosition(objectId: string): number[] {
+
+      if(this.holding == objectId) {
+        return [this.arm,this.stacks[this.arm].length]; // Should be something else?
+      }
+
+      for (let x = 0; x < this.stacks.length; x++) {
+        let y: number = this.stacks[x].indexOf(objectId)
+
+        if (y > -1)
+          return [x, y];
+      }
+
+      throw Error("ERROR: Object '" + objectId + "' does not exist.");
+    }
+
+    /**
+     * Returns the distance of a given object from the arm in the given world
+     * state.
+     * @param  {string}     objectId the object
+     * @return {number}              the distance of the object from the arm
+     */
+    private distanceFromArm(objectId: string): number {
+      return Math.abs(this.getPosition(objectId)[0] - this.arm);
+    }
+
+    /**
+     * Returns the number of objects above a given object in the repressented world state.
+     * @param  {string}     objectId the object
+     * @return {number}              the number of objects above the object
+     */
+    private objectsAbove(objectId: string): number {
+      let position: number[] = this.getPosition(objectId);
+
+      return this.stacks[position[0]].length - position[1] - 1;
+    }
+
+    /**
+     * Compares this StateNode with the given StateNode.
+     * @param  {StateNode}     other the given StateNode
+     * @return {number}              the number symbolizing whether the are the same or not.
+     */
     compareTo(other: StateNode): number {
-      if (JSON.stringify(this) === JSON.stringify(other))
+      if (this.strForm === other.strForm)
         return 0;
       return 100;
     }
 
-    // TODO Doc
+    /**
+     * Returns the string version of the StateNode.
+     * @return {string}   this StateNode in string form.
+     */
     toString(): string {
-      return JSON.stringify(this);
+      return this.strForm;
     }
   }
 
   /**
-   * Represents the graph used by the search algorithm. The graph is build on
-   * the fly by the search algorithm.
+   * Represents the graph used by the search algorithm. 
+   * The graph is build on the fly by the search algorithm.
+   * Contains the objects definitions.
    */
   class StateGraph implements Graph<StateNode> {
+
+    objects : {[s:string] : ObjectDefinition}
+    
+    /**
+     * Constructs a new StateGraph.
+     * @param  {WorldState}   state  The state containing the ObjectDefinitions
+     */
+    constructor(state : WorldState) {
+      this.objects = state.objects;
+    }
+
+
     /**
      * Returns the outgoing edges of a given node in the graph.
      * @param  {StateNode}       node the node
@@ -312,49 +339,114 @@ module Planner {
      */
     outgoingEdges(node: StateNode): Edge<StateNode>[] {
       let edges: Edge<StateNode>[] = [];
-      let moves: string[] = getPossibleMoves(node.state);
-      let edge: Edge<StateNode>;
 
-      if (moves.indexOf('p') > -1) {
-        edge = new Edge<StateNode>();
-        edge.cost = 1;
-        edge.from = node;
-        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
-        edges.push(edge);
+      if (node.holding == null && node.stacks[node.arm].length > 0) {
+        var stacks : string[][] = this.copyStacks(node);
+        var holding : string = stacks[node.arm].pop();
+        edges.push(this.newEdge(1, node, new StateNode(node.arm, holding, stacks)));
       }
-      if (moves.indexOf('d') > -1) {
-        edge = new Edge<StateNode>();
-        edge.cost = 1;
-        edge.from = node;
-        edge.to = new StateNode('d', newWorldState(node.state, 'd'));
-        edges.push(edge);
+      if (this.canDrop(node)) {
+        var stacks : string[][] = this.copyStacks(node);
+        stacks[node.arm].push(node.holding);
+        edges.push(this.newEdge(1, node, new StateNode(node.arm, null, stacks)));
       }
-      if (moves.indexOf('l') > -1) {
-        edge = new Edge<StateNode>();
-        edge.cost = 1;
-        edge.from = node;
-        edge.to = new StateNode('l', newWorldState(node.state, 'l'));
-        edges.push(edge);
+      if (node.arm > 0) {
+        edges.push(this.newEdge(1, node, new StateNode(node.arm-1,node.holding,this.copyStacks(node))));
       }
-      if (moves.indexOf('r') > -1) {
-        edge = new Edge<StateNode>();
-        edge.cost = 1;
-        edge.from = node;
-        edge.to = new StateNode('r', newWorldState(node.state, 'r'));
-        edges.push(edge);
+      if (node.arm < node.stacks.length-1) {
+        edges.push(this.newEdge(1, node, new StateNode(node.arm+1, node.holding, this.copyStacks(node))));
       }
 
       return edges;
     }
 
-    // TODO Doc
+    /**
+     * Indicates whether the arm of a given world state can drop the object it
+     * holds.
+     * @return {boolean}          true if the arm can drop the object, false
+     *                            otherwise
+     */
+    private canDrop(node : StateNode): boolean {
+      if (node.holding == null)
+        return false;
+
+      let objectHeld = this.objects[node.holding];
+      let stackUnderArm: string[] = node.stacks[node.arm];
+      let objectOnTopOfStack =
+          this.objects[stackUnderArm[stackUnderArm.length - 1]];
+      
+      // Anything can be dropped on the floor.
+      if(stackUnderArm.length != 0) {
+        // Balls must be in boxes or on the floor, otherwise they roll away.
+        if (objectHeld.form == 'ball' && objectOnTopOfStack.form != 'box')
+          return false;
+        // Balls cannot support anything.
+        if (stackUnderArm.length > 0 && objectOnTopOfStack.form == 'ball')
+          return false;
+        // Small objects cannot support large objects.
+        if (objectOnTopOfStack.size == 'small' && objectHeld.size == 'large')
+          return false;
+        // Boxes cannot contain pyramids, planks or boxes of the same size.
+        if (objectOnTopOfStack.form == 'box'
+            && objectOnTopOfStack.size == objectHeld.size
+            && (objectHeld.form == 'pyramid' || objectHeld.form == 'plank'
+                || objectHeld.form == 'box'))
+          return false;
+        // Small boxes cannot be supported by small bricks or pyramids.
+        if (objectHeld.form == 'box' && objectHeld.size == 'small'
+            && objectOnTopOfStack.size == 'small'
+            && (objectOnTopOfStack.form == 'brick'
+                || objectOnTopOfStack.form == 'pyramid'))
+          return false;
+        // Large boxes cannot be supported by large pyramids.
+        if (objectHeld.form == 'box' && objectHeld.size == 'large'
+            && objectOnTopOfStack.form == 'pyramid'
+            && objectOnTopOfStack.size == 'large')
+          return false;
+      }
+      return true;
+    }
+
+    private newEdge(cost : number, from : StateNode, to : StateNode) : Edge<StateNode> {
+      var edge : Edge<StateNode> = new Edge<StateNode>();
+      edge.cost = cost;
+      edge.from = from;
+      edge.to = to;
+      return edge;
+    }
+
+    /**
+     * Returns a new set of stacks identical to given StateNodes.
+     * @param  {StateNode}     node  the StateNode
+     * @return {string[][]}          the new stacks
+     */
+    private copyStacks(node: StateNode): string[][] {
+      let newStacks: string[][] = [];
+
+      for (let stack of node.stacks) {
+        let newStack: string[] = [];
+
+        for (let object of stack)
+          newStack.push(object);
+
+        newStacks.push(newStack);
+      }
+      return newStacks;
+    }
+
+    /**
+     * Compares two StateNodes.
+     * @param  {StateNode}     first  the first StateNode
+     * @param  {StateNode}     second the second StateNode
+     * @return {number}               number representing the difference between them (0 or 100).
+     */
     compareNodes: ICompareFunction<StateNode> = function (first, second) {
       return first.compareTo(second);
     }
   }
 
   /**
-   * The core planner function. It simply runs runs the A* search algorithm on a
+   * The core planner function. It simply runs the A* search algorithm on a
    * StateGraph.
    * @param  {DNFFormula} interpretation the logical interpretation of the
    *                                     user's desired goal. The plan needs to
@@ -369,147 +461,63 @@ module Planner {
     interpretation: DNFFormula,
     state: WorldState
   ): string[] {
-    let result: SearchResult<StateNode> = aStarSearch(
-      new StateGraph(),
-      new StateNode('', state),
-      node => node.isGoal(interpretation),
-      node => node.heuristics(interpretation),
-      5
-    );
+    var time = -Date.now();
+    
+    if(new StateNode(state.arm,state.holding,state.stacks).isGoal(interpretation)) {
+        return [];
+    }
 
+    var error : Error;
+    var result : SearchResult<StateNode>;
+    try {
+      let newResult: SearchResult<StateNode> = aStarSearch(
+        new StateGraph(state),
+        new StateNode(state.arm,state.holding,state.stacks),
+        node => node.isGoal(interpretation),
+        node => node.heuristics(interpretation),
+        5
+      );
+      if(result == null || newResult.cost < result.cost) {
+        result = newResult;
+      }
+    } catch(err) {
+      error = err;
+    }
+    
     let actions: string[] = [];
-
-    //result.path.map(node => node.move);
-
-    result.path.forEach(node => {
-      if (node.move.length > 0)
-        actions.push(node.move);
-    });
-
-    console.log(actions);
-
+    
+    if(result != null) {
+      for(var n = 0; n < result.path.length-1; n++)
+        actions.push(action(result.path[n], result.path[n+1]));
+    } else if(error != null) {
+      var err : string = error.message + " :";
+      for(var a of interpretation) {
+        err += '\n';
+        for(var b of a) {
+          err += " " + b.relation + "(" + b.args + ")";
+        }
+      }
+      throw Error(err);
+    }
+    actions.push("Time: " + (time + Date.now()));
     return actions;
   }
-
   /**
-   * Returns all the possible moves from a given state.
-   * @param  {WorldState} state the world state
-   * @return {string[]}         the possible moves
+   * Finds the actions to perform to go between two StateNodes.
+   * @param  {StateNode}  from  the StateNode to move from
+   * @param  {StateNode}  to    the StateNode to move to
+   * @return {string}           the action needed to be performed  
    */
-  function getPossibleMoves(state: WorldState): string[] {
-    let possibleMoves: string[] = [];
-
-    if (state.holding == null) {
-      possibleMoves.push('p');
-    } else if (canDrop(state)) {
-      possibleMoves.push('d');
+  function action(from : StateNode, to : StateNode) : string {
+    if(from.holding == null && to.holding != null) {
+      return "p";
+    } else if(from.holding != null && to.holding == null) {
+      return "d";
+    } else if(from.arm > to.arm) {
+      return "l";
+    } else if(from.arm < to.arm) {
+      return "r";
     }
-
-    if (state.arm > 0)
-      possibleMoves.push('l');
-
-    if (state.arm < state.stacks.length)
-      possibleMoves.push('r');
-
-    return possibleMoves;
-  }
-
-  /**
-   * Indicates whether the arm of a given world state can drop the object it
-   * holds.
-   * @param  {WorldState} state the world state
-   * @return {boolean}          true if the arm can drop the object, false
-   *                            otherwise
-   */
-  function canDrop(state: WorldState): boolean {
-    if (JSON.stringify(state).length > 0)
-      return false;
-
-    if (state.holding == null)
-      return false;
-
-    let objectHeld = state.objects[state.holding];
-    let stackUnderArm: string[] = state.stacks[state.arm];
-    let objectOnTopOfStack =
-        state.objects[stackUnderArm[stackUnderArm.length - 1]];
-
-    // Balls must be in boxes or on the floor, otherwise they roll away.
-    if (objectHeld.form == 'ball' && stackUnderArm.length != 0
-        && objectOnTopOfStack.form != 'box')
-      return false;
-    // Balls cannot support anything.
-    if (stackUnderArm.length > 0 && objectOnTopOfStack.form == 'ball')
-      return false;
-    // Small objects cannot support large objects.
-    if (objectOnTopOfStack.size == 'small' && objectHeld.size == 'large')
-      return false;
-    // Boxes cannot contain pyramids, planks or boxes of the same size.
-    if (objectOnTopOfStack.form == 'box'
-        && objectOnTopOfStack.size == objectHeld.size
-        && (objectHeld.form == 'pyramid' || objectHeld.form == 'plank'
-            || objectHeld.form == 'box'))
-      return false;
-    // Small boxes cannot be supported by small bricks or pyramids.
-    if (objectHeld.form == 'box' && objectHeld.size == 'small'
-        && objectOnTopOfStack.size == 'small'
-        && (objectOnTopOfStack.form == 'brick'
-            || objectOnTopOfStack.form == 'pyramid'))
-      return false;
-    // Large boxes cannot be supported by large pyramids.
-    if (objectHeld.form == 'box' && objectHeld.size == 'large'
-        && objectOnTopOfStack.form == 'pyramid'
-        && objectOnTopOfStack.size == 'large')
-      return false;
-
-    return true;
-  }
-
-  /**
-   * Returns a new world state from a given world state on which a given move is
-   * applied.
-   * @param  {WorldState} state the world state
-   * @param  {string}     move  the move
-   * @return {WorldState}       the new world state
-   */
-  function newWorldState(state: WorldState, move: string): WorldState {
-    let newStacks: string[][] = [];
-
-    for (let stack of state.stacks) {
-      let newStack: string[] = [];
-
-      for (let object of stack)
-        newStack.push(object);
-
-      newStacks.push(newStack);
-    }
-
-    let newState: WorldState = {
-      stacks: newStacks,
-      holding: state.holding,
-      arm: state.arm,
-      objects: state.objects,
-      examples: state.examples
-    };
-
-    switch (move) {
-      case 'l':
-        if (newState.arm > 0) // This kind of tests shouldn't be needed
-          newState.arm--;
-        break;
-      case 'r':
-        if (newState.arm < newState.stacks.length - 1)
-        newState.arm++;
-        break;
-      case 'd':
-        newState.stacks[state.arm].push(newState.holding);
-        newState.holding = '';
-        break;
-      case 'p':
-        if (newState.stacks[state.arm].length > 0)
-          newState.holding = newState.stacks[state.arm].pop();
-        break;
-    }
-
-    return newState;
+      return null;
   }
 }

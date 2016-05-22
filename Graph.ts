@@ -111,7 +111,7 @@ function aStarSearch<Node>(
   while (!openNodes.isEmpty()) {
     if (!((startTime + Date.now()) < timeout)) {
       // Throws an exception in case of timed out
-      throw new TimeOutException(timeout);
+      throw Error("Search Timed Out");
     }
 
     let currentNode = openNodes.removeRoot();
@@ -143,15 +143,15 @@ function aStarSearch<Node>(
       //   console.log(costs.getValue(currentNode) + edge.cost);
       //   console.log(costs.getValue(edge.to));
       // }
-      console.log("edge.to: ");
-      console.log(edge.to);
-      console.log("closedNodes.contains(edge.to): " + closedNodes.contains(edge.to));
-      console.log("closedNodes: ");
-      closedNodes.forEach(node => {
-        console.log(node);
-      });
+      // console.log("edge.to: ");
+      // console.log(edge.to);
+      // console.log("closedNodes.contains(edge.to): " + closedNodes.contains(edge.to));
+      // console.log("closedNodes: ");
+      // closedNodes.forEach(node => {
+      //   console.log(node);
+      // });
       if (!closedNodes.contains(edge.to)) {
-        console.log("test!");
+        // console.log("test!");
         // Found the currently most optimal path to the neighbour.
         if (!costs.containsKey(edge.to) || costs.getValue(currentNode)
           + edge.cost < costs.getValue(edge.to)) {
@@ -173,15 +173,6 @@ function aStarSearch<Node>(
   }
 
   return result;
-}
-
-// TimeOut exception
-class TimeOutException {
-  status: number;
-  message: string = "Timed Out";
-  constructor (status: number) {
-    this.status = status;
-  }
 }
 
 /**
