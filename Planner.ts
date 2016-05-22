@@ -493,7 +493,7 @@ module Planner {
 
     switch (move) {
       case 'l':
-        if (newState.arm > 0)
+        if (newState.arm > 0) // This kind of tests shouldn't be needed
           newState.arm--;
         break;
       case 'r':
