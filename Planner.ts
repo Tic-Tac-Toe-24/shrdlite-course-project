@@ -81,6 +81,9 @@ module Planner {
   function literalHolds(literal: Literal, state: WorldState): boolean {
     switch (literal.relation) {
       case 'holding':
+        if (typeof state.holding == 'undefined'
+            || state.holding == null || state.holding.length == 0)
+          return false;
         return state.holding == literal.args[0];
       case 'ontop':
         if (literal.args[1] == 'floor') {
@@ -196,40 +199,43 @@ module Planner {
     if (literalHolds(literal, state))
       return 0;
 
+    let holdingCost: number = (typeof state.holding == 'undefined'
+        || state.holding == null || state.holding.length == 0) ? 1 : 2
+
     if (literal.relation == 'holding') {
-      return (state.holding.length == 0 ? 1 : 2)
+      return holdingCost
           + distanceFromArm(literal.args[0], state);
     } else {
       if (literal.relation == 'ontop' || literal.relation == 'inside') {
-        return (state.holding.length == 0 ? 1 : 2)
+        return holdingCost
             + (objectsAbove(literal.args[0], state) * 3)
             + distanceFromArm(literal.args[0], state)
             + (objectsAbove(literal.args[1], state) * 3)
             + distanceFromArm(literal.args[1], state);
       } else if (literal.relation == 'above') {
-        return (state.holding.length == 0 ? 1 : 2)
+        return holdingCost
             + (objectsAbove(literal.args[0], state) * 3)
             + distanceFromArm(literal.args[0], state)
             + distanceFromArm(literal.args[1], state);
       } else if (literal.relation == 'under') {
-        return (state.holding.length == 0 ? 6 : 8)
+        return (holdingCost == 1 ? 6 : 8)
             + (objectsAbove(literal.args[0], state) * 3)
             + distanceFromArm(literal.args[0], state)
             + (objectsAbove(literal.args[1], state) * 3)
             + distanceFromArm(literal.args[1], state);
       } else if (literal.relation == 'beside') {
-        return (state.holding.length == 0 ? 1 : 2)
+        return holdingCost
             + (objectsAbove(literal.args[0], state) * 3)
             + (distanceFromArm(literal.args[0], state))
             + (distanceFromArm(literal.args[1], state) - 1);
       } else if (literal.relation == 'leftof') {
-        return (state.holding.length == 0 ? 1 : 2)
+        return holdingCost
             + (objectsAbove(literal.args[0], state) * 3)
             + distanceFromArm(literal.args[0], state)
             + Math.abs(
                 getPosition(literal.args[1], state)[0] + 1 - state.arm);
       } else if (literal.relation == 'rightof') {
-        return (state.holding.length == 0 ? 1 : 2)
+        return holdingCost
             + (objectsAbove(literal.args[0], state) * 3)
             + distanceFromArm(literal.args[0], state)
             + Math.abs(
@@ -250,7 +256,10 @@ module Planner {
      * @param  {string}     move  a move
      * @param  {WorldState} state a world state
      */
-    constructor (move: string, state: WorldState) { }
+    constructor (move: string, state: WorldState) {
+      this.move = move;
+      this.state = state;
+    }
 
     move: string;
     state: WorldState;
@@ -288,50 +297,52 @@ module Planner {
    * the fly by the search algorithm.
    */
   class StateGraph implements Graph<StateNode> {
-
     /**
      * Returns the outgoing edges of a given node in the graph.
      * @param  {StateNode}       node the node
      * @return {Edge<StateNode>}      the edges
      */
     outgoingEdges(node: StateNode): Edge<StateNode>[] {
-      let edges : Edge<StateNode>[] = [];
-      let moves : string[] = getPossibleMoves(node.state);
-      let edge : Edge<StateNode>;
-      if(moves.indexOf('p') > -1) {
+      let edges: Edge<StateNode>[] = [];
+      let moves: string[] = getPossibleMoves(node.state);
+      let edge: Edge<StateNode>;
+
+      if (moves.indexOf('p') > -1) {
         edge = new Edge<StateNode>();
         edge.cost = 1;
         edge.from = node;
         edge.to = new StateNode('p', newWorldState(node.state, 'p'));
         edges.push(edge);
       }
-      if(moves.indexOf('d') > -1) {
+      if (moves.indexOf('d') > -1) {
         edge = new Edge<StateNode>();
         edge.cost = 1;
         edge.from = node;
-        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edge.to = new StateNode('d', newWorldState(node.state, 'd'));
         edges.push(edge);
       }
-      if(moves.indexOf('l') > -1) {
+      if (moves.indexOf('l') > -1) {
         edge = new Edge<StateNode>();
         edge.cost = 1;
         edge.from = node;
-        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edge.to = new StateNode('l', newWorldState(node.state, 'l'));
         edges.push(edge);
       }
-      if(moves.indexOf('r') > -1) {
+      if (moves.indexOf('r') > -1) {
         edge = new Edge<StateNode>();
         edge.cost = 1;
         edge.from = node;
-        edge.to = new StateNode('p', newWorldState(node.state, 'p'));
+        edge.to = new StateNode('r', newWorldState(node.state, 'r'));
         edges.push(edge);
       }
+
       return edges;
     }
 
-    // Unneeded
+    // Needed!
     compareNodes: ICompareFunction<StateNode> = function (first, second) {
-      return 0;
+      return JSON.stringify(first.state) == JSON.stringify(second.state)
+          ? 0 : 1;
     }
   }
 
@@ -370,7 +381,8 @@ module Planner {
   function getPossibleMoves(state: WorldState): string[] {
     let possibleMoves: string[] = [];
 
-    if (state.holding.length == 0) {
+    if (typeof state.holding == 'undefined' || state.holding == null
+        || state.holding.length == 0) {
       possibleMoves.push('p');
     } else if (canDrop(state)) {
       possibleMoves.push('d');
@@ -393,7 +405,8 @@ module Planner {
    *                            otherwise
    */
   function canDrop(state: WorldState): boolean {
-    if (state.holding.length == 0)
+    if (typeof state.holding == 'undefined' || state.holding == null
+        || state.holding.length == 0)
       return false;
 
     let objectHeld = state.objects[state.holding];
@@ -453,7 +466,8 @@ module Planner {
 
     let newState: WorldState = {
       stacks: newStacks,
-      holding: state.holding,
+      holding: (typeof state.holding == 'undefined'
+          || state.holding == null || state.holding.length == 0) ? '' : state.holding,
       arm: state.arm,
       objects: state.objects,
       examples: state.examples
@@ -474,8 +488,6 @@ module Planner {
         newState.holding = newState.stacks[state.arm].pop();
         break;
     }
-
-    console.log(newState);
 
     return newState;
   }

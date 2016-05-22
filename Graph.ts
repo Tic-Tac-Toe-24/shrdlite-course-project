@@ -113,8 +113,12 @@ function aStarSearch<Node>(
       // Throws an exception in case of timed out
       throw new TimeOutException(timeout);
     }
+
     let currentNode = openNodes.removeRoot();
     closedNodes.add(currentNode);
+
+    console.log(currentNode);
+    console.log(goal(currentNode));
 
     // Optimal path found.
     if (goal(currentNode)) {
@@ -126,13 +130,27 @@ function aStarSearch<Node>(
       }
       // Creates result.
       result.path = path.toArray().reverse();
-      result.cost = costs.getValue(result.path[result.path.length-1]);
+      result.cost = costs.getValue(result.path[result.path.length - 1]);
+
       break;
     }
 
     // Goes through every neighbouring node.
     for (let edge of graph.outgoingEdges(currentNode)) {
+      // console.log(currentNode);
+      // console.log(edge.to);
+      // console.log(graph.compareNodes(currentNode, edge.to));
+      // if (costs.containsKey(edge.to)) {
+      //   console.log(costs.containsKey(edge.to));
+      // } else {
+      //   console.log(costs.getValue(currentNode) + edge.cost);
+      //   console.log(costs.getValue(edge.to));
+      // }
+      console.log(edge.to);
+      console.log(closedNodes.contains(edge.to));
+      console.log(closedNodes);
       if (!closedNodes.contains(edge.to)) {
+        console.log("test!");
         // Found the currently most optimal path to the neighbour.
         if (!costs.containsKey(edge.to) || costs.getValue(currentNode)
           + edge.cost < costs.getValue(edge.to)) {
