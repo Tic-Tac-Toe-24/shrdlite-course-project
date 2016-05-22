@@ -81,9 +81,6 @@ module Planner {
   function literalHolds(literal: Literal, state: WorldState): boolean {
     switch (literal.relation) {
       case 'holding':
-        if (typeof state.holding == 'undefined'
-            || state.holding == null || state.holding.length == 0)
-          return false;
         return state.holding == literal.args[0];
       case 'ontop':
         if (literal.args[1] == 'floor') {
@@ -199,8 +196,7 @@ module Planner {
     if (literalHolds(literal, state))
       return 0;
 
-    let holdingCost: number = (typeof state.holding == 'undefined'
-        || state.holding == null || state.holding.length == 0) ? 1 : 2
+    let holdingCost: number = (state.holding == null) ? 1 : 2
 
     if (literal.relation == 'holding') {
       return holdingCost
@@ -290,6 +286,18 @@ module Planner {
           Math.max.apply(null, conjunction.map(literal =>
               estimatedCostLiteral(literal, this.state)))));
     }
+
+    // TODO Doc
+    compareTo(other: StateNode): number {
+      if (JSON.stringify(this) === JSON.stringify(other))
+        return 0;
+      return 100;
+    }
+
+    // TODO Doc
+    toString(): string {
+      return JSON.stringify(this);
+    }
   }
 
   /**
@@ -339,10 +347,9 @@ module Planner {
       return edges;
     }
 
-    // Needed!
+    // TODO Doc
     compareNodes: ICompareFunction<StateNode> = function (first, second) {
-      return JSON.stringify(first.state) == JSON.stringify(second.state)
-          ? 0 : 1;
+      return first.compareTo(second);
     }
   }
 
@@ -370,7 +377,18 @@ module Planner {
       5
     );
 
-    return result.path.map(node => node.move);
+    let actions: string[] = [];
+
+    //result.path.map(node => node.move);
+
+    result.path.forEach(node => {
+      if (node.move.length > 0)
+        actions.push(node.move);
+    });
+
+    console.log(actions);
+
+    return actions;
   }
 
   /**
@@ -381,8 +399,7 @@ module Planner {
   function getPossibleMoves(state: WorldState): string[] {
     let possibleMoves: string[] = [];
 
-    if (typeof state.holding == 'undefined' || state.holding == null
-        || state.holding.length == 0) {
+    if (state.holding == null) {
       possibleMoves.push('p');
     } else if (canDrop(state)) {
       possibleMoves.push('d');
@@ -405,8 +422,10 @@ module Planner {
    *                            otherwise
    */
   function canDrop(state: WorldState): boolean {
-    if (typeof state.holding == 'undefined' || state.holding == null
-        || state.holding.length == 0)
+    if (JSON.stringify(state).length > 0)
+      return false;
+
+    if (state.holding == null)
       return false;
 
     let objectHeld = state.objects[state.holding];
@@ -466,8 +485,7 @@ module Planner {
 
     let newState: WorldState = {
       stacks: newStacks,
-      holding: (typeof state.holding == 'undefined'
-          || state.holding == null || state.holding.length == 0) ? '' : state.holding,
+      holding: state.holding,
       arm: state.arm,
       objects: state.objects,
       examples: state.examples
@@ -475,9 +493,11 @@ module Planner {
 
     switch (move) {
       case 'l':
-        newState.arm--;
+        if (newState.arm > 0)
+          newState.arm--;
         break;
       case 'r':
+        if (newState.arm < newState.stacks.length - 1)
         newState.arm++;
         break;
       case 'd':
@@ -485,7 +505,8 @@ module Planner {
         newState.holding = '';
         break;
       case 'p':
-        newState.holding = newState.stacks[state.arm].pop();
+        if (newState.stacks[state.arm].length > 0)
+          newState.holding = newState.stacks[state.arm].pop();
         break;
     }
 

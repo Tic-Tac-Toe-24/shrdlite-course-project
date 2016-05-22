@@ -117,9 +117,6 @@ function aStarSearch<Node>(
     let currentNode = openNodes.removeRoot();
     closedNodes.add(currentNode);
 
-    console.log(currentNode);
-    console.log(goal(currentNode));
-
     // Optimal path found.
     if (goal(currentNode)) {
       let path: LinkedList<Node> = new LinkedList<Node>();
@@ -146,9 +143,13 @@ function aStarSearch<Node>(
       //   console.log(costs.getValue(currentNode) + edge.cost);
       //   console.log(costs.getValue(edge.to));
       // }
+      console.log("edge.to: ");
       console.log(edge.to);
-      console.log(closedNodes.contains(edge.to));
-      console.log(closedNodes);
+      console.log("closedNodes.contains(edge.to): " + closedNodes.contains(edge.to));
+      console.log("closedNodes: ");
+      closedNodes.forEach(node => {
+        console.log(node);
+      });
       if (!closedNodes.contains(edge.to)) {
         console.log("test!");
         // Found the currently most optimal path to the neighbour.
