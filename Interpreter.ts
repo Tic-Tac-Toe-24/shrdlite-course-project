@@ -139,6 +139,32 @@ module Interpreter {
     return false;
   }
 
+  function objectMatchesCommand(
+    state: WorldState,
+    stateObjectId: string,
+    entity: Entity
+  ): boolean {
+    // The object in the state
+    let stateObject: Parser.Object = state.objects[stateObjectId];
+
+    // The given object
+    let commandObject: Parser.Object = entity.object;
+
+    if (commandObject.color == null && commandObject.form == null
+        && commandObject.size == null && commandObject.object)
+      commandObject = entity.object.object;
+
+    if (commandObject.size != null && commandObject.size != stateObject.size)
+      return false;
+    if (commandObject.color != null && commandObject.color != stateObject.color)
+      return false;
+    if (commandObject.form != null && commandObject.form != 'anyform'
+        && commandObject.form != stateObject.form)
+      return false;
+
+    return true;
+  }
+
   /**
    * Indicates whether an object is valid.
    * @param  {WorldState} state    the world state
@@ -158,23 +184,9 @@ module Interpreter {
     if (objectId == 'floor')
       return entity.object.form == 'floor'
 
-    // The object in the state
-    let stateObject = state.objects[objectId];
-
-    // The given object
-    let commandObject = entity.object;
-
-    if (commandObject.color == null && commandObject.form == null
-        && commandObject.size == null && commandObject.object)
-      commandObject = entity.object.object;
-
-    if (commandObject.size != null && commandObject.size != stateObject.size)
+    if (!objectMatchesCommand(state, objectId, entity))
       return false;
-    if (commandObject.color != null && commandObject.color != stateObject.color)
-      return false;
-    if (commandObject.form != null && commandObject.form != 'anyform'
-        && commandObject.form != stateObject.form)
-      return false;
+
     if (entity.object.location != null)
       switch(entity.object.location.relation) {
         case 'ontop':
@@ -297,6 +309,12 @@ module Interpreter {
         if (isObjectValid(state, x, y, cmd.entity))
           objects.push(state.stacks[x][y]);
 
+    if (state.holding != null
+        && objectMatchesCommand(state, state.holding, cmd.entity)
+        && typeof cmd.entity.object.location == 'undefined')
+      objects.push(state.holding);
+
+
     // Gets the relation and adds all valid targets to targets list (if the
     // command has a location)
     if (cmd.location != null) {
@@ -309,6 +327,11 @@ module Interpreter {
         for (let y = 0; y < state.stacks[x].length; y++)
           if (isObjectValid(state, x, y, cmd.location.entity))
             targets.push(state.stacks[x][y]);
+
+      if (state.holding != null
+          && objectMatchesCommand(state, state.holding, cmd.location.entity)
+          && typeof cmd.location.entity.object.location == 'undefined')
+        targets.push(state.holding);
     }
 
     // Generates the interpretation
