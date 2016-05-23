@@ -481,10 +481,6 @@ module Planner {
   ): string[] {
     var time = -Date.now();
 
-    if(new StateNode(state.arm,state.holding,state.stacks).isGoal(interpretation)) {
-        return [];
-    }
-
     var error : Error;
     var result : SearchResult<StateNode>;
     try {
