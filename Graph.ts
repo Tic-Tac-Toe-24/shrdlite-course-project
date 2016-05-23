@@ -44,6 +44,31 @@ class SearchResult<Node> {
   cost: number;
 }
 
+class CostNode<Node> {
+  node : Node;
+  private gCost : number;
+  private hCost : number;
+  fCost : number;
+
+  constructor(node : Node, gCost : number, hCost : number) {
+    this.node = node;
+    this.hCost = hCost;
+    this.setGCost(gCost);
+  }
+
+  setGCost(gCost : number) {
+    this.gCost = gCost;
+    this.fCost = gCost + this.hCost;
+  }
+  getGCost() : number {
+    return this.gCost;
+  }
+
+  toString() : string {
+    return "" + this.node;
+  }
+}
+
 /**
  * Calculates the most optimal path from start to goal in the graph, using
  * provided heuristics.
@@ -78,19 +103,12 @@ function aStarSearch<Node>(
 
   // The set of closed nodes.
   let closedNodes: Set<Node> = new Set<Node>();
-  // The nodes g-costs.
-  let costs: Dictionary<Node, number> = new Dictionary<Node, number>();
   // The nodes predecessor.
-  let predecessors: Dictionary<Node, Node> = new Dictionary<Node, Node>();
-
-  // Returns the f-value of a Node.
-  let getF = function(node: Node): number{
-    return heuristics(node) + costs.getValue(node);
-  }
+  let predecessors: Dictionary<CostNode<Node>, CostNode<Node>> = new Dictionary<CostNode<Node>, CostNode<Node>>();
 
   // Comparison of 2 Nodes, where they are never the same.
-  let compareFValue: ICompareFunction<Node> = function(first, second) {
-    let difference = getF(first) - getF(second);
+  let compareFValue: ICompareFunction<CostNode<Node>> = function(first, second) {
+    let difference = first.fCost - second.fCost;
     if (difference != 0) {
       return difference;
     } else {
@@ -98,14 +116,21 @@ function aStarSearch<Node>(
     }
   }
 
+  let costNodesEqual = function(first : CostNode<Node> , second : CostNode<Node>) : boolean {
+    if(graph.compareNodes(first.node,second.node) == 0) {
+      return true;
+    }
+    return false;
+  }
+
   // The set of open nodes.
-  let openNodes: Heap<Node> =
-    new Heap<Node>(compareFValue, compareToEquals(graph.compareNodes));
+  let openNodes: Heap<CostNode<Node>> =
+    new Heap<CostNode<Node>>(compareFValue, costNodesEqual);
 
   // Add start to the set of open nodes, including setting its g-cost and predecessor.
-  predecessors.setValue(start, start);
-  costs.setValue(start, 0);
-  openNodes.add(start);
+  var startNode : CostNode<Node> = new CostNode<Node>(start, 0, 0);
+  predecessors.setValue(startNode, startNode);
+  openNodes.add(startNode);
 
   // Continues looking through the set of open nodes as long as theres any left.
   while (!openNodes.isEmpty()) {
@@ -114,26 +139,25 @@ function aStarSearch<Node>(
       throw Error("Search Timed Out");
     }
 
-    let currentNode = openNodes.removeRoot();
-    closedNodes.add(currentNode);
+    let currentNode : CostNode<Node> = openNodes.removeRoot();
+    closedNodes.add(currentNode.node);
 
     // Optimal path found.
-    if (goal(currentNode)) {
+    if (goal(currentNode.node)) {
+      result.cost = currentNode.getGCost();
       let path: LinkedList<Node> = new LinkedList<Node>();
       // Collects path nodes
       while (!path.contains(start)) {
-        path.add(currentNode);
+        path.add(currentNode.node);
         currentNode = predecessors.getValue(currentNode);
       }
-      // Creates result.
+      // Sets result path.
       result.path = path.toArray().reverse();
-      result.cost = costs.getValue(result.path[result.path.length - 1]);
-
       break;
     }
 
     // Goes through every neighbouring node.
-    for (let edge of graph.outgoingEdges(currentNode)) {
+    for (let edge of graph.outgoingEdges(currentNode.node)) {
       // console.log(currentNode);
       // console.log(edge.to);
       // console.log(graph.compareNodes(currentNode, edge.to));
@@ -153,7 +177,17 @@ function aStarSearch<Node>(
       if (!closedNodes.contains(edge.to)) {
         // console.log("test!");
         // Found the currently most optimal path to the neighbour.
-        if (!costs.containsKey(edge.to) || costs.getValue(currentNode)
+        var node : CostNode<Node> = openNodes.getElement(new CostNode<Node>(edge.to,0,0));
+        if(node == null) {
+          node = new CostNode<Node>(edge.to, currentNode.getGCost() + edge.cost, heuristics(edge.to));
+          predecessors.setValue(node, currentNode);
+          openNodes.add(node);
+        } else if(currentNode.getGCost() + edge.cost < node.getGCost()) {
+          predecessors.setValue(node, currentNode);
+          node.setGCost(currentNode.getGCost() + edge.cost);
+          openNodes.update(node);
+        }
+/*        if (!costs.containsKey(edge.to) || costs.getValue(currentNode)
           + edge.cost < costs.getValue(edge.to)) {
           // Sets the neighbours predecessor to the current Node.
           predecessors.setValue(edge.to, currentNode);
@@ -167,7 +201,7 @@ function aStarSearch<Node>(
           } else {
             openNodes.update(edge.to);
           }
-        }
+        }*/
       }
     }
   }
@@ -182,7 +216,7 @@ class Heap<T> {
   private data: T[] = [];
   private compare: ICompareFunction<T>;
   private equals: IEqualsFunction<T>;
-
+  
   /**
    * Constructs a new Heap.
    * @param  {ICompareFunction<T>} compareFunction a function that compares two
@@ -318,8 +352,13 @@ class Heap<T> {
    * @return {boolean}         true if the element is in the heap, false
    *                           otherwise
    */
-  contains(element: T): boolean {
-    return arrays.contains(this.data, element, this.equals);
+  getElement(element: T): T {
+    for(var e of this.data) {
+      if(this.equals(element,e)) {
+        return e;
+      }
+    }
+    return null;
   }
 
   /**
