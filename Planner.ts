@@ -487,8 +487,8 @@ module Planner {
   ): string[] {
     var time = -Date.now();
 
-    var error : Error;
     var result : SearchResult<StateNode>;
+    let actions: string[] = [];
     try {
       let newResult: SearchResult<StateNode> = aStarSearch(
         new StateGraph(state),
@@ -501,24 +501,23 @@ module Planner {
         result = newResult;
       }
     } catch(err) {
-      error = err;
-    }
-
-    let actions: string[] = [];
-
-    if(result != null) {
-      for(var n = 0; n < result.path.length-1; n++)
-        actions.push(action(result.path[n], result.path[n+1]));
-    } else if(error != null) {
-      var err : string = error.message + " :";
+      var message : string = err.message + " :";
       for(var a of interpretation) {
-        err += '\n';
+        message += '\n';
         for(var b of a) {
-          err += " " + b.relation + "(" + b.args + ")";
+          message += " " + b.relation + "(" + b.args + ")";
         }
       }
-      throw Error(err);
+      throw Error(message);
     }
+
+    if(result != null) {
+      for(var n = 0; n < result.path.length-1; n++) {
+        actions.push(action(result.path[n], result.path[n+1]));
+      }
+      actions = addDescriptions(actions, result.path, state.objects);
+    }
+
     actions.push("Time: " + (time + Date.now()));
     return actions;
   }
@@ -539,5 +538,105 @@ module Planner {
       return "r";
     }
       return null;
+  }
+  /**
+   * Adds descriptions to describe the actions.
+   * @param  {string[]}                       actions   the actions to be described
+   * @param  {StateNode[]}                    path      the path occuring when performing the actions
+   * @param  {{[s:string]: ObjectDefinition}} objects   the objects inside the paths ObjectDefinitions
+   * @return {string[]}                                 the actions with added descriptions before each action
+   */
+  function addDescriptions(actions : string[], path : StateNode[], objects : {[s:string]: ObjectDefinition}) : string[] {
+    if(actions.length != path.length-1) {
+      return actions;
+    }
+
+    var descActions : string[] = [];
+    var move : string[] = [];
+    var startIndex : number = 0;
+    for(var n = 0; n < actions.length; n++) {
+      move.push(actions[n]);
+      if(actions[n] == "d" || n == actions.length-1) {
+        descActions.push(description(move, path, startIndex, objects));
+        descActions = descActions.concat(move);
+        move = [];
+        startIndex = n+1;
+      }
+    }
+    return descActions;
+  }
+
+  /**
+   * Generates the description for describing the move.
+   * @param  {string[]}                       move        the actions performed for a move
+   * @param  {StateNode[]}                    path        the path occuring when performing the actions
+   * @param  {number}                         startIndex  the path index for the first action in move
+   * @param  {{[s:string]: ObjectDefinition}} objects     the objects inside the paths ObjectDefinitions
+   * @return {string[]}                                   the description for the move
+   */
+  function description(move : string[], path : StateNode[], startIndex : number, objects : {[s:string]: ObjectDefinition}) : string {
+    var objectIds : string[] = [];
+    for(var n = 0; n < path[0].stacks.length; n++) {
+      objectIds = objectIds.concat(path[0].stacks[n]);
+    }
+    if(path[0].holding != null) {
+      objectIds.push(path[0].holding);
+    }
+
+    var holding : string;
+    var index : number = move.indexOf("d");
+    if(index > -1) {
+      holding = path[index + startIndex].holding;
+      var node : StateNode = path[index + startIndex];
+      var stack : string[] = node.stacks[node.arm];
+      var dropOn : string = stack[stack.length-1] || "floor in column " + (node.arm+1);
+      var relation : string = (stack[stack.length-1] != null && objects[dropOn].form == "box") ? " inside " : " on ";
+      return "Putting " + describe(holding, objectIds, objects) + relation + describe(dropOn, objectIds, objects) + ".";
+    } else {
+      holding = path[move.length + startIndex].holding;
+      return "Taking " + describe(holding, objectIds, objects) + ".";
+    }
+  }
+
+  /**
+   * Generates the description for describing the object.
+   * @param  {string}                         objectId    the object to be described
+   * @param  {string[]}                       objectIds   the objects existing in the world
+   * @param  {{[s:string]: ObjectDefinition}} objects     the objectIds ObjectDefinitions
+   * @return {string[]}                                   the description for the object
+   */
+  function describe(objectId : string, objectIds : string[], objects : {[s:string]: ObjectDefinition}) : string {
+    if(objectId.substring(0,5) == "floor") {
+      return " the " + objectId;
+    }
+    var object : ObjectDefinition = objects[objectId];
+    var desc : string = object.form;
+    var remaining : string[] = 
+    objectIds.filter((value: string, index : number, array : string[]) => {
+      return objects[value].form == object.form;
+    });
+
+    if(remaining.length == 1)
+      return " the " + desc;
+
+    desc = object.color + " " + desc;
+    remaining =
+    remaining.filter((value: string, index : number, array : string[]) => {
+      return objects[value].color == object.color;
+    });
+
+    if(remaining.length == 1)
+      return " the " + desc;
+
+    desc = object.size + " " + desc;
+    remaining =
+    remaining.filter((value: string, index : number, array : string[]) => {
+      return objects[value].size == object.size;
+    });
+
+    if(remaining.length == 1)
+      return " the " + desc;
+    
+    return " a " + desc;
   }
 }
