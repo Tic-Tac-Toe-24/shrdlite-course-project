@@ -209,42 +209,36 @@ module Planner {
 
       if (literal.relation == 'holding') {
         return holdingCost
-            + this.distanceFromArm(literal.args[0]);
+            + this.distanceFromArm(literal.args[0], null);
       } else {
         if (literal.relation == 'ontop' || literal.relation == 'inside') {
           return holdingCost
-              + (this.objectsAbove(literal.args[0]) * 3)
-              + this.distanceFromArm(literal.args[0])
-              + (this.objectsAbove(literal.args[1]) * 3)
-              + this.distanceFromArm(literal.args[1]);
+              + (this.objectsAbove(literal.args[0], literal.args[1]) * 3)
+              + this.distanceFromArm(literal.args[0], literal.args[1]);
         } else if (literal.relation == 'above') {
           return holdingCost
-              + (this.objectsAbove(literal.args[0]) * 3)
-              + this.distanceFromArm(literal.args[0])
-              + this.distanceFromArm(literal.args[1]);
+              + (this.objectsAbove(literal.args[0], null) * 3)
+              + this.distanceFromArm(literal.args[0], literal.args[1]);
         } else if (literal.relation == 'under') {
           return (holdingCost == 1 ? 6 : 8)
-              + (this.objectsAbove(literal.args[0]) * 3)
-              + this.distanceFromArm(literal.args[0])
-              + (this.objectsAbove(literal.args[1]) * 3)
-              + this.distanceFromArm(literal.args[1]);
+              + (this.objectsAbove(literal.args[0], literal.args[1]) * 3)
+              + this.distanceFromArm(literal.args[0], literal.args[1]);
         } else if (literal.relation == 'beside') {
           return holdingCost
-              + (this.objectsAbove(literal.args[0]) * 3)
-              + (this.distanceFromArm(literal.args[0]))
-              + (this.distanceFromArm(literal.args[1]) - 1);
+              + (this.objectsAbove(literal.args[0], null) * 3)
+              + this.distanceFromArm(literal.args[0], literal.args[1]) - 1;
         } else if (literal.relation == 'leftof') {
           return holdingCost
-              + (this.objectsAbove(literal.args[0]) * 3)
-              + this.distanceFromArm(literal.args[0])
+              + (this.objectsAbove(literal.args[0], null) * 3)
+              + this.distanceFromArm(literal.args[0], null)
               + Math.abs(
-                  this.getPosition(literal.args[1])[0] + 1 - this.arm);
+                  this.getPositions(literal.args[0], literal.args[1])[2] + 1 - this.arm);
         } else if (literal.relation == 'rightof') {
           return holdingCost
-              + (this.objectsAbove(literal.args[0]) * 3)
-              + this.distanceFromArm(literal.args[0])
+              + (this.objectsAbove(literal.args[0], null) * 3)
+              + this.distanceFromArm(literal.args[0], null)
               + Math.abs(
-                  this.getPosition(literal.args[1])[0] - 1 - this.arm);
+                  this.getPositions(literal.args[0], literal.args[1])[2] - 1 - this.arm);
         }
       }
 
@@ -257,20 +251,39 @@ module Planner {
      * @return {number[]}            a list containing two elements: a stack index
      *                               and a position in a stack
      */
-    private getPosition(objectId: string): number[] {
+    private getPositions(firstObject: string, secondObject: string): number[] {
+      if (firstObject == this.holding) {
+        if (secondObject == 'floor')
+          return [this.arm, this.stacks[this.arm].length, this.arm, -1]
 
-      if(this.holding == objectId) {
-        return [this.arm,this.stacks[this.arm].length]; // Should be something else?
+        let positionSecondObject: number[] =
+            this.getPositions(secondObject, null);
+
+        return [this.arm, this.stacks[this.arm].length,
+            positionSecondObject[0], positionSecondObject[1]];
       }
 
       for (let x = 0; x < this.stacks.length; x++) {
-        let y: number = this.stacks[x].indexOf(objectId)
+        let y: number = this.stacks[x].indexOf(firstObject);
 
-        if (y > -1)
-          return [x, y];
+        if (y > -1) {
+          if (secondObject == null)
+            return [x, y, this.arm, this.stacks[this.arm].length - 1];
+          if (secondObject == 'floor')
+            return [x, y, x, -1];
+          if (secondObject == this.holding)
+            return [x, y, this.arm, this.stacks[this.arm].length];
+
+          for (let x2 = 0; x2 < this.stacks.length; x2++) {
+            let y2: number = this.stacks[x].indexOf(firstObject);
+
+            if (y2 > -1)
+              return [x, y, x2, y2];
+          }
+        }
       }
 
-      throw Error("ERROR: Object '" + objectId + "' does not exist.");
+      throw Error("ERROR: Object '" + firstObject + "' does not exist.");
     }
 
     /**
@@ -279,8 +292,11 @@ module Planner {
      * @param  {string}     objectId the object
      * @return {number}              the distance of the object from the arm
      */
-    private distanceFromArm(objectId: string): number {
-      return Math.abs(this.getPosition(objectId)[0] - this.arm);
+    private distanceFromArm(firstObject: string, secondObject: string): number {
+      let positions: number[] = this.getPositions(firstObject, secondObject);
+
+      return Math.abs(positions[0] - this.arm)
+          + Math.abs(positions[2] - this.arm);
     }
 
     /**
@@ -288,10 +304,12 @@ module Planner {
      * @param  {string}     objectId the object
      * @return {number}              the number of objects above the object
      */
-    private objectsAbove(objectId: string): number {
-      let position: number[] = this.getPosition(objectId);
+    private objectsAbove(firstObject: string, secondObject: string): number {
+      let positions: number[] = this.getPositions(firstObject, secondObject);
 
-      return this.stacks[position[0]].length - position[1] - 1;
+      return (this.stacks[positions[0]].length - positions[1] - 1)
+          + (this.stacks[positions[2]].length - positions[3] - 1);
+
     }
 
     /**
@@ -315,14 +333,14 @@ module Planner {
   }
 
   /**
-   * Represents the graph used by the search algorithm. 
+   * Represents the graph used by the search algorithm.
    * The graph is build on the fly by the search algorithm.
    * Contains the objects definitions.
    */
   class StateGraph implements Graph<StateNode> {
 
     objects : {[s:string] : ObjectDefinition}
-    
+
     /**
      * Constructs a new StateGraph.
      * @param  {WorldState}   state  The state containing the ObjectDefinitions
@@ -374,7 +392,7 @@ module Planner {
       let stackUnderArm: string[] = node.stacks[node.arm];
       let objectOnTopOfStack =
           this.objects[stackUnderArm[stackUnderArm.length - 1]];
-      
+
       // Anything can be dropped on the floor.
       if(stackUnderArm.length != 0) {
         // Balls must be in boxes or on the floor, otherwise they roll away.
@@ -462,7 +480,7 @@ module Planner {
     state: WorldState
   ): string[] {
     var time = -Date.now();
-    
+
     if(new StateNode(state.arm,state.holding,state.stacks).isGoal(interpretation)) {
         return [];
     }
@@ -483,9 +501,9 @@ module Planner {
     } catch(err) {
       error = err;
     }
-    
+
     let actions: string[] = [];
-    
+
     if(result != null) {
       for(var n = 0; n < result.path.length-1; n++)
         actions.push(action(result.path[n], result.path[n+1]));
@@ -506,7 +524,7 @@ module Planner {
    * Finds the actions to perform to go between two StateNodes.
    * @param  {StateNode}  from  the StateNode to move from
    * @param  {StateNode}  to    the StateNode to move to
-   * @return {string}           the action needed to be performed  
+   * @return {string}           the action needed to be performed
    */
   function action(from : StateNode, to : StateNode) : string {
     if(from.holding == null && to.holding != null) {
