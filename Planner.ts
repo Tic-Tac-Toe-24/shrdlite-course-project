@@ -252,9 +252,15 @@ module Planner {
      *                               and a position in a stack
      */
     private getPositions(firstObject: string, secondObject: string): number[] {
+      if(firstObject == null) {
+        throw Error("First Object is null in: " + this.toString());
+      }
+
       if (firstObject == this.holding) {
         if (secondObject == 'floor')
-          return [this.arm, this.stacks[this.arm].length, this.arm, -1]
+          return [this.arm, this.stacks[this.arm].length, this.arm, -1];
+        if(secondObject == null)
+          return [this.arm, this.stacks[this.arm].length, this.arm, this.stacks[this.arm].length - 1]; // Is this correct?
 
         let positionSecondObject: number[] =
             this.getPositions(secondObject, null);
@@ -489,7 +495,7 @@ module Planner {
         new StateNode(state.arm,state.holding,state.stacks),
         node => node.isGoal(interpretation),
         node => node.heuristics(interpretation),
-        5
+        10
       );
       if(result == null || newResult.cost < result.cost) {
         result = newResult;
