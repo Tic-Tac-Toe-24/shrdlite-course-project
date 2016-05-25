@@ -289,7 +289,7 @@ module Planner {
         }
       }
 
-      throw Error("ERROR: Object '" + firstObject + "' does not exist.");
+      throw Error("Object '" + firstObject + "' does not exist.");
     }
 
     /**
@@ -611,7 +611,7 @@ module Planner {
     }
     var object : ObjectDefinition = objects[objectId];
     var desc : string = object.form;
-    var remaining : string[] = 
+    var remaining : string[] =
     objectIds.filter((value: string, index : number, array : string[]) => {
       return objects[value].form == object.form;
     });
@@ -636,7 +636,7 @@ module Planner {
 
     if(remaining.length == 1)
       return " the " + desc;
-    
+
     return " a " + desc;
   }
 }

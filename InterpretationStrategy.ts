@@ -37,10 +37,10 @@ class TakeStrategy implements InterpretationStrategy {
 }
 
 /**
- * Represents a strategy for a "put" command with the quantifier "any" for the
- * entity to move and a quantifier "the" or "any" for the location.
+ * Represents a strategy for a "put" command with the quantifier "any" or "the"
+ * for the entity to move and a quantifier "the" or "any" for the location.
  */
-class PutAnyToOneStrategy implements InterpretationStrategy {
+class PutOneToOneStrategy implements InterpretationStrategy {
   getInterpretation(
     objects: string[],
     targets: string[],
@@ -99,7 +99,8 @@ class PutAllToAnyStrategy implements InterpretationStrategy {
           currentTargets[j] = 0;
         }
 
-      interpretation.push(currentConjunction);
+      if (currentConjunction.length > 0)
+        interpretation.push(currentConjunction);
     }
 
     if (anyValue(interpretation, (e) => e.length > 1))
@@ -120,6 +121,7 @@ class PutAnyToAllStrategy implements InterpretationStrategy {
     action: string,
     physicalLaws: (objectId: string, targetId: string) => boolean
   ): DNFFormula {
+    // TODO Change this!
     return new PutAllToAnyStrategy()
         .getInterpretation(objects, targets, action, physicalLaws);
   }
@@ -166,9 +168,9 @@ function getInterpretationStrategy(cmd: Command): InterpretationStrategy {
     if (entityQuantifier == 'all'
         && (locationQuantifier == 'the' || locationQuantifier == 'any')) {
       return new PutAllToAnyStrategy();
-    } else if (entityQuantifier == 'any'
+    } else if ((entityQuantifier == 'any' || entityQuantifier == 'the')
         && (locationQuantifier == 'the' || locationQuantifier == 'any')) {
-      return new PutAnyToOneStrategy();
+      return new PutOneToOneStrategy();
     } else if (entityQuantifier == 'all' && locationQuantifier == 'all') {
       return new PutAllToAllStrategy();
     } else if (entityQuantifier == 'any' && locationQuantifier == 'all') {
