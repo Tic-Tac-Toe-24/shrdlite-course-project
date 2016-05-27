@@ -130,13 +130,45 @@ module Interpreter {
    * @param  {Entity}     entity an entity with which to compare stack objects
    * @return {boolean}           true if the stack is valid, false otherwise
    */
-  function isStackValid(state: WorldState, x: number, entity: Entity): boolean {
+  function isStackValid(
+    state: WorldState,
+    x: number,
+    object: Parser.Object
+  ): boolean {
     if (x >= 0 && x < state.stacks.length)
       for (let y = 0; y < state.stacks[x].length; y++)
-        if (isObjectValid(state, x, y, entity))
+        if (isObjectValid(state, x, y, object))
           return true;
 
     return false;
+  }
+
+  function objectMatchesCommand(
+    state: WorldState,
+    stateObjectId: string,
+    object: Parser.Object,
+    x?: number,
+    y?: number
+  ): boolean {
+    // The object in the state
+    let stateObject: Parser.Object = state.objects[stateObjectId];
+
+    // The given object
+    //let commandObject: Parser.Object = entity.object;
+
+    if (object.color == null && object.form == null
+        && object.size == null && object.object)
+      return isObjectValid(state, x, y, object.object);
+
+    if (object.size != null && object.size != stateObject.size)
+      return false;
+    if (object.color != null && object.color != stateObject.color)
+      return false;
+    if (object.form != null && object.form != 'anyform'
+        && object.form != stateObject.form)
+      return false;
+
+    return true;
   }
 
   /**
@@ -151,63 +183,52 @@ module Interpreter {
     state: WorldState,
     x: number,
     y: number,
-    entity: Entity
+    object: Parser.Object
   ): boolean {
     let objectId: string = getObject(state, x, y);
+    let locationForm: string;
 
     if (objectId == 'floor')
-      return entity.object.form == 'floor'
+      return object.form == 'floor'
 
-    // The object in the state
-    let stateObject = state.objects[objectId];
-
-    // The given object
-    let commandObject = entity.object;
-
-    if (commandObject.color == null && commandObject.form == null
-        && commandObject.size == null && commandObject.object)
-      commandObject = entity.object.object;
-
-    if (commandObject.size != null && commandObject.size != stateObject.size)
+    if (!objectMatchesCommand(state, objectId, object, x, y))
       return false;
-    if (commandObject.color != null && commandObject.color != stateObject.color)
-      return false;
-    if (commandObject.form != null && commandObject.form != 'anyform'
-        && commandObject.form != stateObject.form)
-      return false;
-    if (entity.object.location != null)
-      switch(entity.object.location.relation) {
+
+    if (object.location != null)
+      switch(object.location.relation) {
         case 'ontop':
-          if (!isObjectValid(state, x, y - 1, entity.object.location.entity))
+          if ((y > 1 && state.objects[state.stacks[x][y - 1]].form == 'box')
+              || !isObjectValid(state, x, y - 1, object.location.entity.object))
             return false;
           break;
         case 'inside':
-          if (!isObjectValid(state, x, y - 1, entity.object.location.entity))
+          if ((y > 1 && state.objects[state.stacks[x][y - 1]].form != 'box')
+              || !isObjectValid(state, x, y - 1, object.location.entity.object))
             return false;
           break;
         case 'above':
           for (let i = y - 1; i >= 0; i--)
-            if (isObjectValid(state, x, i, entity.object.location.entity))
+            if (isObjectValid(state, x, i, object.location.entity.object))
               return true;
           return false;
         case 'under':
           for (let i = y + 1; i < state.stacks[x].length; i++)
-            if (isObjectValid(state, x, i, entity.object.location.entity))
+            if (isObjectValid(state, x, i, object.location.entity.object))
               return true;
           return false;
         case 'beside':
-          if (!isStackValid(state, x - 1, entity.object.location.entity)
-              && !isStackValid(state, x + 1, entity.object.location.entity))
+          if (!isStackValid(state, x - 1, object.location.entity.object)
+              && !isStackValid(state, x + 1, object.location.entity.object))
             return false;
           break;
         case 'leftof':
           for (let i = x + 1; i < state.stacks.length; i++)
-            if (isStackValid(state, i, entity.object.location.entity))
+            if (isStackValid(state, i, object.location.entity.object))
               return true;
           return false;
         case 'rightof':
           for (let i = x - 1; i >= 0; i--)
-            if (isStackValid(state, i, entity.object.location.entity))
+            if (isStackValid(state, i, object.location.entity.object))
               return true;
           return false;
       }
@@ -236,13 +257,14 @@ module Interpreter {
           && (cmd.location == null
               || cmd.location.entity.object.form == 'floor');
 
+    if (objectId == targetId)
+      return false;
+
     let object: Parser.Object = state.objects[objectId];
     let target: Parser.Object = state.objects[targetId];
 
-    if (objectId == targetId)
-      return false;
-    if (object.form == 'ball' && (relation == 'inside' && target.form != 'box')
-        || (relation == 'ontop' && target.form != 'floor'))
+    if (object.form == 'ball' && ((relation == 'inside' && target.form != 'box')
+        || (relation == 'ontop' && target.form != 'floor')))
       return false;
     if (target.form == 'ball' && (relation == 'ontop' || relation == 'above'))
       return false;
@@ -289,13 +311,16 @@ module Interpreter {
     let targets: string[] = [];
     let interpretation: DNFFormula = [];
 
-    console.log(JSON.stringify(cmd));
-
     // Adds all valid objects to objects list
     for (let x = 0; x < state.stacks.length; x++)
       for (let y = 0; y < state.stacks[x].length; y++)
-        if (isObjectValid(state, x, y, cmd.entity))
+        if (isObjectValid(state, x, y, cmd.entity.object))
           objects.push(state.stacks[x][y]);
+
+    if (state.holding != null
+        && objectMatchesCommand(state, state.holding, cmd.entity.object)
+        && typeof cmd.entity.object.location == 'undefined')
+      objects.push(state.holding);
 
     // Gets the relation and adds all valid targets to targets list (if the
     // command has a location)
@@ -307,8 +332,13 @@ module Interpreter {
 
       for (let x = 0; x < state.stacks.length; x++)
         for (let y = 0; y < state.stacks[x].length; y++)
-          if (isObjectValid(state, x, y, cmd.location.entity))
+          if (isObjectValid(state, x, y, cmd.location.entity.object))
             targets.push(state.stacks[x][y]);
+
+      if (state.holding != null
+          && objectMatchesCommand(state, state.holding, cmd.location.entity.object)
+          && typeof cmd.location.entity.object.location == 'undefined')
+        targets.push(state.holding);
     }
 
     // Generates the interpretation
@@ -317,7 +347,7 @@ module Interpreter {
 
     // An error is thrown if no valid interpretation has been found
     if (interpretation.length == 0)
-      throw Error("ERROR: No valid interpretation: " + cmd);
+      throw Error("No valid interpretation");
 
     return interpretation;
   }

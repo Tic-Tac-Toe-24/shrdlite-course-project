@@ -113,12 +113,23 @@ module Interpreter {
        }
    );
 
+   /* More complicated commands */
    allTestCases.push(
-     {world: "small",
+     {world: "complex",
       utterance: "take a red object on a red object on a yellow object on the floor",
-      interpretations: [["inside(e,k) & inside(f,k)", "inside(e,l) & inside(f,k)",
-                         "inside(e,k) & inside(f,l)", "inside(e,l) & inside(f,l)"]]
-     }
+      interpretations: [["holding(j)"]]
+    },
+    {world: "complex",
+     utterance: "put an object on a table on a yellow object on the floor",
+     interpretations: [["ontop(j,floor)"],
+                       ["ontop(j,i)", "ontop(j,a)", "ontop(b,i)", "ontop(b,a)"],
+                       ["ontop(j,h)", "ontop(b,h)", "ontop(m,h)", "ontop(d,h)"]]
+    },
+    {world: "complex",
+     utterance: "put all balls left of a ball",
+     interpretations: [["ontop(j,floor)"],
+                       ["ontop(j,i)", "ontop(j,a)", "ontop(b,i)", "ontop(b,a)"],
+                       ["ontop(j,h)", "ontop(b,h)", "ontop(m,h)", "ontop(d,h)"]]
+    }
    );
-
 }
