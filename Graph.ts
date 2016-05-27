@@ -44,6 +44,26 @@ class SearchResult<Node> {
   cost: number;
 }
 
+
+
+function biDirectionalSearch<Node>(
+  graph: Graph<Node>,
+  start: Node,
+  goal: (n: Node) => boolean,
+  heuristics: (n: Node) => number,
+  timeout: number
+): SearchResult<Node> {
+  let result: SearchResult<Node> = {
+    path: [start],
+    cost: 0
+  };
+  // goalstate with guessing and checking PL
+  // implement two A* from each side
+
+  return null;
+}
+
+
 /**
  * Calculates the most optimal path from start to goal in the graph, using
  * provided heuristics.
