@@ -64,13 +64,32 @@ class GridGraph implements Graph<GridNode> {
                         outgoing.push({
                             from: node,
                             to: next,
-                            cost: 1 
+                            cost: 1
                         });
                     }
                 }
             }
         }
         return outgoing;
+    }
+
+    incomingEdges(node : GridNode) : Edge<GridNode>[] {
+        var incoming : Edge<GridNode>[] = [];
+        for (var dx = -1; dx <= 1; dx++) {
+            for (var dy = -1; dy <= 1; dy++) {
+                if (! (dx*dx == dy*dy)) {
+                    var next = node.add({x:dx, y:dy});
+                    if (! this.walls.contains(next)) {
+                        incoming.push({
+                            from: next, //switched
+                            to: node,
+                            cost: 1
+                        });
+                    }
+                }
+            }
+        }
+        return incoming;
     }
 
     compareNodes(a : GridNode, b : GridNode) : number {
@@ -89,7 +108,7 @@ class GridGraph implements Graph<GridNode> {
         for (var y = this.size.y-1; y >= 0; y--) {
             // row of borders
             for (var x = 0; x < this.size.x; x++) {
-                if (y == this.size.y || 
+                if (y == this.size.y ||
                     this.walls.contains(new GridNode({x:x,y:y})) ||
                     this.walls.contains(new GridNode({x:x,y:y+1}))
                    ) str += "+---"
@@ -115,6 +134,5 @@ class GridGraph implements Graph<GridNode> {
         }
         str += new Array(this.size.x + 1).join("+---") + "+\n";
         return str;
-    }    
+    }
 }
-

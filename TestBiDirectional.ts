@@ -47,7 +47,7 @@ function runTest(c: TestCase, useHeuristics: boolean) : boolean {
     }
 
     try {
-        var result = aStarSearch(graph, startnode, isgoal, h, 10);
+        var result = biDirectionalSearch(graph, startnode, isgoal, h, 10);
         var cost = checkPath(graph, startnode, result.path);
         if (!cost) {
             console.log("The result is not a correct path!");
