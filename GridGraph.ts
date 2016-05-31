@@ -73,25 +73,6 @@ class GridGraph implements Graph<GridNode> {
         return outgoing;
     }
 
-    incomingEdges(node : GridNode) : Edge<GridNode>[] {
-        var incoming : Edge<GridNode>[] = [];
-        for (var dx = -1; dx <= 1; dx++) {
-            for (var dy = -1; dy <= 1; dy++) {
-                if (! (dx*dx == dy*dy)) {
-                    var next = node.add({x:dx, y:dy});
-                    if (! this.walls.contains(next)) {
-                        incoming.push({
-                            from: next, //switched
-                            to: node,
-                            cost: 1
-                        });
-                    }
-                }
-            }
-        }
-        return incoming;
-    }
-
     compareNodes(a : GridNode, b : GridNode) : number {
         return a.compareTo(b);
     }

@@ -32,7 +32,6 @@ class Edge<Node> {
 interface Graph<Node> {
   /** Computes the edges that leave from a node. */
   outgoingEdges(node: Node): Edge<Node>[];
-  incomingEdges(node: Node): Edge<Node>[];
   /** A function that compares nodes. */
   compareNodes: ICompareFunction<Node>;
 }
@@ -67,6 +66,7 @@ function biDirectionalSearch<Node>(
   let closedGoalNodes: Set<Node> = new Set<Node>();
   // The nodes predecessor.
   let predecessors: Dictionary<CostNode<Node>, CostNode<Node>> = new Dictionary<CostNode<Node>, CostNode<Node>>();
+  let successors: Dictionary<CostNode<Node>, CostNode<Node>> = new Dictionary<CostNode<Node>, CostNode<Node>>();
 
   // Comparison of 2 Nodes, where they are never the same.
   let compareFValue: ICompareFunction<CostNode<Node>> = function(first, second) {
@@ -116,15 +116,15 @@ function biDirectionalSearch<Node>(
   let goalNodes: Set<Node> = getGoalNodes(new Set<Node>(), start, new Set<Node>());
   //let goalNode : CostNode<Node> = new CostNode<Node>(goalNodes.remove(), 0, 0);
 
-
+  var goalNode: CostNode<Node>;
   goalNodes.forEach((goal) => {
-    openNodesGoal.add(new CostNode(goal,0,0));
+    goalNode = new CostNode<Node>(goal,0,0);
+    openNodesGoal.add(goalNode);
+    successors.setValue(goalNode, goalNode);
   });
 
   // search algorithm
   while (!openNodesStart.isEmpty() && !openNodesGoal.isEmpty()) {
-
-      console.log("  bla   ");
     if (!((startTime + Date.now()) < timeout)) {
       // Throws an exception in case of timed out
       throw Error("Search Timed Out");
@@ -134,17 +134,38 @@ function biDirectionalSearch<Node>(
     let currentStartNode : CostNode<Node> = openNodesStart.removeRoot();
     closedStartNodes.add(currentStartNode.node);
 
+    let currentGoalNode : CostNode<Node> = openNodesGoal.removeRoot();
+    closedGoalNodes.add(currentGoalNode.node);
+
+
     // Optimal path found.
     if (goal(currentStartNode.node) || closedGoalNodes.contains(currentStartNode.node)) {
-      result.cost = currentStartNode.getGCost();
+
       let path: LinkedList<Node> = new LinkedList<Node>();
+      let path2: LinkedList<Node> = new LinkedList<Node>();
       // Collects path nodes
+      if(closedStartNodes.contains(successors.getValue(currentStartNode).node) &&
+        closedStartNodes.contains(predecessors.getValue(currentStartNode).node)) {
+        console.log("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+        currentStartNode = predecessors.getValue(currentStartNode);
+      }
+      result.cost = currentStartNode.getGCost();
+      currentGoalNode = successors.getValue(currentStartNode);
+      console.log(currentStartNode.node);
+      console.log(currentGoalNode.node);
       while (!path.contains(start)) {
         path.add(currentStartNode.node);
         currentStartNode = predecessors.getValue(currentStartNode);
       }
-      result.path = path.toArray().reverse();
-      //TODO add 2nd path
+      do {
+        path2.add(currentGoalNode.node);
+        currentGoalNode = successors.getValue(currentGoalNode);
+        result.cost++;
+      }while(!goal(currentGoalNode.node))
+      path2.add(currentGoalNode.node);
+      result.cost++;
+      result.path = path.toArray().reverse().concat(path2.toArray());
 
       break;
     }
@@ -167,38 +188,44 @@ function biDirectionalSearch<Node>(
 
 
     // search for start, starting from the goal nodes
-
-    let currentGoalNode : CostNode<Node> = openNodesGoal.removeRoot();
-    closedGoalNodes.add(currentGoalNode.node);
-    if(closedStartNodes.contains(currentGoalNode.node)) {
-      result.cost = currentGoalNode.getGCost();
+    if(closedStartNodes.contains(currentGoalNode.node) && false) {
+      result.cost = currentStartNode.getGCost();// + currentGoalNode.getGCost();
       let path: LinkedList<Node> = new LinkedList<Node>();
+      let path2: LinkedList<Node> = new LinkedList<Node>();
       // Collects path nodes
+      //console.log(currentStartNode.node);
+
+      currentGoalNode = successors.getValue(currentStartNode);
       while (!path.contains(start)) {
-        path.add(currentGoalNode.node);
-        currentGoalNode = predecessors.getValue(currentGoalNode);
+        path.add(currentStartNode.node);
+        currentStartNode = predecessors.getValue(currentStartNode);
       }
-      result.path = path.toArray().reverse();
-      //TODO add 2nd path
+      do {
+        path2.add(currentGoalNode.node);
+        currentGoalNode = successors.getValue(currentGoalNode);
+        result.cost++;
+      }while(!goal(currentGoalNode.node))
+      path2.add(currentGoalNode.node);
+      result.cost++;
+      result.path = path.toArray().reverse().concat(path2.toArray());
       break;
     }
 
     // Goes through every incoming node.
-    for (let edge of graph.incomingEdges(currentGoalNode.node)) {
+    for (let edge of graph.outgoingEdges(currentGoalNode.node)) {
       if (!closedGoalNodes.contains(edge.to)) {
-        var node : CostNode<Node> = openNodesGoal.getElement(new CostNode<Node>(edge.to,0,0));
-        if(node == null) {
-          node = new CostNode<Node>(edge.to, currentGoalNode.getGCost() + edge.cost, heuristics(edge.to));
-          predecessors.setValue(node, currentGoalNode);
-          openNodesGoal.add(node);
-        } else if(currentGoalNode.getGCost() + edge.cost < node.getGCost()) {
-          predecessors.setValue(node, currentGoalNode);
-          node.setGCost(currentGoalNode.getGCost() + edge.cost);
-          openNodesGoal.update(node);
+        var node2 : CostNode<Node> = openNodesGoal.getElement(new CostNode<Node>(edge.to,0,0));
+        if(node2 == null) {
+          node2 = new CostNode<Node>(edge.to, currentGoalNode.getGCost() + edge.cost, heuristics(edge.to));
+          successors.setValue(node2, currentGoalNode);
+          openNodesGoal.add(node2);
+        } else if(currentGoalNode.getGCost() + edge.cost < node2.getGCost()) {
+          successors.setValue(node2, currentGoalNode);
+          node2.setGCost(currentGoalNode.getGCost() + edge.cost);
+          openNodesGoal.update(node2);
         }
       }
     }
-
   }
   return result;
 }

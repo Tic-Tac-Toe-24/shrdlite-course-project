@@ -2548,6 +2548,7 @@ function biDirectionalSearch(graph, start, goal, heuristics, timeout) {
     var closedGoalNodes = new Set();
     // The nodes predecessor.
     var predecessors = new Dictionary();
+    var successors = new Dictionary();
     // Comparison of 2 Nodes, where they are never the same.
     var compareFValue = function (first, second) {
         var difference = first.fCost - second.fCost;
@@ -2588,12 +2589,14 @@ function biDirectionalSearch(graph, start, goal, heuristics, timeout) {
     //let goalNodes: Set<Node> = new Set<Node>();
     var goalNodes = getGoalNodes(new Set(), start, new Set());
     //let goalNode : CostNode<Node> = new CostNode<Node>(goalNodes.remove(), 0, 0);
+    var goalNode;
     goalNodes.forEach(function (goal) {
-        openNodesGoal.add(new CostNode(goal, 0, 0));
+        goalNode = new CostNode(goal, 0, 0);
+        openNodesGoal.add(goalNode);
+        successors.setValue(goalNode, goalNode);
     });
     // search algorithm
     while (!openNodesStart.isEmpty() && !openNodesGoal.isEmpty()) {
-        console.log("  bla   ");
         if (!((startTime + Date.now()) < timeout)) {
             // Throws an exception in case of timed out
             throw Error("Search Timed Out");
@@ -2601,17 +2604,34 @@ function biDirectionalSearch(graph, start, goal, heuristics, timeout) {
         //from start to goal
         var currentStartNode = openNodesStart.removeRoot();
         closedStartNodes.add(currentStartNode.node);
+        var currentGoalNode = openNodesGoal.removeRoot();
+        closedGoalNodes.add(currentGoalNode.node);
         // Optimal path found.
         if (goal(currentStartNode.node) || closedGoalNodes.contains(currentStartNode.node)) {
-            result.cost = currentStartNode.getGCost();
             var path = new LinkedList();
+            var path2 = new LinkedList();
             // Collects path nodes
+            if (closedStartNodes.contains(successors.getValue(currentStartNode).node) &&
+                closedStartNodes.contains(predecessors.getValue(currentStartNode).node)) {
+                console.log("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                currentStartNode = predecessors.getValue(currentStartNode);
+            }
+            result.cost = currentStartNode.getGCost();
+            currentGoalNode = successors.getValue(currentStartNode);
+            console.log(currentStartNode.node);
+            console.log(currentGoalNode.node);
             while (!path.contains(start)) {
                 path.add(currentStartNode.node);
                 currentStartNode = predecessors.getValue(currentStartNode);
             }
-            result.path = path.toArray().reverse();
-            //TODO add 2nd path
+            do {
+                path2.add(currentGoalNode.node);
+                currentGoalNode = successors.getValue(currentGoalNode);
+                result.cost++;
+            } while (!goal(currentGoalNode.node));
+            path2.add(currentGoalNode.node);
+            result.cost++;
+            result.path = path.toArray().reverse().concat(path2.toArray());
             break;
         }
         // Goes through every neighbouring node.
@@ -2632,34 +2652,41 @@ function biDirectionalSearch(graph, start, goal, heuristics, timeout) {
             }
         }
         // search for start, starting from the goal nodes
-        var currentGoalNode = openNodesGoal.removeRoot();
-        closedGoalNodes.add(currentGoalNode.node);
-        if (closedStartNodes.contains(currentGoalNode.node)) {
-            result.cost = currentGoalNode.getGCost();
+        if (closedStartNodes.contains(currentGoalNode.node) && false) {
+            result.cost = currentStartNode.getGCost(); // + currentGoalNode.getGCost();
             var path = new LinkedList();
+            var path2 = new LinkedList();
             // Collects path nodes
+            //console.log(currentStartNode.node);
+            currentGoalNode = successors.getValue(currentStartNode);
             while (!path.contains(start)) {
-                path.add(currentGoalNode.node);
-                currentGoalNode = predecessors.getValue(currentGoalNode);
+                path.add(currentStartNode.node);
+                currentStartNode = predecessors.getValue(currentStartNode);
             }
-            result.path = path.toArray().reverse();
-            //TODO add 2nd path
+            do {
+                path2.add(currentGoalNode.node);
+                currentGoalNode = successors.getValue(currentGoalNode);
+                result.cost++;
+            } while (!goal(currentGoalNode.node));
+            path2.add(currentGoalNode.node);
+            result.cost++;
+            result.path = path.toArray().reverse().concat(path2.toArray());
             break;
         }
         // Goes through every incoming node.
-        for (var _b = 0, _c = graph.incomingEdges(currentGoalNode.node); _b < _c.length; _b++) {
+        for (var _b = 0, _c = graph.outgoingEdges(currentGoalNode.node); _b < _c.length; _b++) {
             var edge = _c[_b];
             if (!closedGoalNodes.contains(edge.to)) {
-                var node = openNodesGoal.getElement(new CostNode(edge.to, 0, 0));
-                if (node == null) {
-                    node = new CostNode(edge.to, currentGoalNode.getGCost() + edge.cost, heuristics(edge.to));
-                    predecessors.setValue(node, currentGoalNode);
-                    openNodesGoal.add(node);
+                var node2 = openNodesGoal.getElement(new CostNode(edge.to, 0, 0));
+                if (node2 == null) {
+                    node2 = new CostNode(edge.to, currentGoalNode.getGCost() + edge.cost, heuristics(edge.to));
+                    successors.setValue(node2, currentGoalNode);
+                    openNodesGoal.add(node2);
                 }
-                else if (currentGoalNode.getGCost() + edge.cost < node.getGCost()) {
-                    predecessors.setValue(node, currentGoalNode);
-                    node.setGCost(currentGoalNode.getGCost() + edge.cost);
-                    openNodesGoal.update(node);
+                else if (currentGoalNode.getGCost() + edge.cost < node2.getGCost()) {
+                    successors.setValue(node2, currentGoalNode);
+                    node2.setGCost(currentGoalNode.getGCost() + edge.cost);
+                    openNodesGoal.update(node2);
                 }
             }
         }
@@ -2991,24 +3018,6 @@ var GridGraph = (function () {
             }
         }
         return outgoing;
-    };
-    GridGraph.prototype.incomingEdges = function (node) {
-        var incoming = [];
-        for (var dx = -1; dx <= 1; dx++) {
-            for (var dy = -1; dy <= 1; dy++) {
-                if (!(dx * dx == dy * dy)) {
-                    var next = node.add({ x: dx, y: dy });
-                    if (!this.walls.contains(next)) {
-                        incoming.push({
-                            from: next,
-                            to: node,
-                            cost: 1
-                        });
-                    }
-                }
-            }
-        }
-        return incoming;
     };
     GridGraph.prototype.compareNodes = function (a, b) {
         return a.compareTo(b);
