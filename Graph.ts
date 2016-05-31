@@ -105,17 +105,13 @@ function biDirectionalSearch<Node>(
     new Heap<CostNode<Node>>(compareFValue, costNodesEqual);
   let openNodesGoal:  Heap<CostNode<Node>> =
       new Heap<CostNode<Node>>(compareFValue, costNodesEqual);
-  // Add start to the set of open nodes, including setting its g-cost and predecessor.
   var startNode : CostNode<Node> = new CostNode<Node>(start, 0, 0);
   predecessors.setValue(startNode, startNode);
   openNodesStart.add(startNode);
 
-
-  //let goalNodes: Set<Node> = new Set<Node>();
-
   let goalNodes: Set<Node> = getGoalNodes(new Set<Node>(), start, new Set<Node>());
-  //let goalNode : CostNode<Node> = new CostNode<Node>(goalNodes.remove(), 0, 0);
 
+  //collect all goal-nodes
   var goalNode: CostNode<Node>;
   goalNodes.forEach((goal) => {
     goalNode = new CostNode<Node>(goal,0,0);
@@ -123,7 +119,7 @@ function biDirectionalSearch<Node>(
     successors.setValue(goalNode, goalNode);
   });
 
-  // search algorithm
+  // bidirectional A* search algorithm
   while (!openNodesStart.isEmpty() && !openNodesGoal.isEmpty()) {
     if (!((startTime + Date.now()) < timeout)) {
       // Throws an exception in case of timed out
@@ -134,31 +130,30 @@ function biDirectionalSearch<Node>(
     let currentStartNode : CostNode<Node> = openNodesStart.removeRoot();
     closedStartNodes.add(currentStartNode.node);
 
+    //from goal to start
     let currentGoalNode : CostNode<Node> = openNodesGoal.removeRoot();
     closedGoalNodes.add(currentGoalNode.node);
 
 
-    // Optimal path found.
+    //when the two A* found each other
     if (goal(currentStartNode.node) || closedGoalNodes.contains(currentStartNode.node)) {
 
-      let path: LinkedList<Node> = new LinkedList<Node>();
-      let path2: LinkedList<Node> = new LinkedList<Node>();
-      // Collects path nodes
+      //correct if currentStartNode is not on optimal path
       if(closedStartNodes.contains(successors.getValue(currentStartNode).node) &&
         closedStartNodes.contains(predecessors.getValue(currentStartNode).node)) {
-        console.log("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
         currentStartNode = predecessors.getValue(currentStartNode);
       }
       result.cost = currentStartNode.getGCost();
       currentGoalNode = successors.getValue(currentStartNode);
-      console.log(currentStartNode.node);
-      console.log(currentGoalNode.node);
-      while (!path.contains(start)) {
+
+      let path: LinkedList<Node> = new LinkedList<Node>();
+      let path2: LinkedList<Node> = new LinkedList<Node>();
+      // Collects path nodes
+      while (!path.contains(start)) { //start to middle
         path.add(currentStartNode.node);
         currentStartNode = predecessors.getValue(currentStartNode);
       }
-      do {
+      do { // middle to goal
         path2.add(currentGoalNode.node);
         currentGoalNode = successors.getValue(currentGoalNode);
         result.cost++;
@@ -166,7 +161,6 @@ function biDirectionalSearch<Node>(
       path2.add(currentGoalNode.node);
       result.cost++;
       result.path = path.toArray().reverse().concat(path2.toArray());
-
       break;
     }
 
@@ -186,16 +180,12 @@ function biDirectionalSearch<Node>(
       }
     }
 
-
     // search for start, starting from the goal nodes
     if(closedStartNodes.contains(currentGoalNode.node) && false) {
-      result.cost = currentStartNode.getGCost();// + currentGoalNode.getGCost();
       let path: LinkedList<Node> = new LinkedList<Node>();
       let path2: LinkedList<Node> = new LinkedList<Node>();
-      // Collects path nodes
-      //console.log(currentStartNode.node);
-
       currentGoalNode = successors.getValue(currentStartNode);
+      result.cost = currentStartNode.getGCost();
       while (!path.contains(start)) {
         path.add(currentStartNode.node);
         currentStartNode = predecessors.getValue(currentStartNode);
