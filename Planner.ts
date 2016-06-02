@@ -86,9 +86,9 @@ module Planner {
 
     /**
      * Constructs a new StateNode.
-     * @param  {number}     arm  the position of the arm
-     * @param  {string}     holding what the arm is holding
-     * @param  {string}     stacks the stacks of objects
+     * @param  {number}         arm  the position of the arm
+     * @param  {string}         holding what the arm is holding
+     * @param  {string[][]}     stacks the stacks of objects
      */
     constructor (arm : number, holding : string, stacks : string[][]) {
       this.arm = arm;
@@ -246,8 +246,9 @@ module Planner {
     }
 
     /**
-     * Returns the position of a given object in a given world state.
-     * @param  {string}     objectId the object
+     * Returns the position of given objects in a given world state.
+     * @param  {string}     firstObject the first object
+     * @param  {string}     secondObject the second object
      * @return {number[]}            a list containing two elements: a stack index
      *                               and a position in a stack
      */
@@ -293,9 +294,10 @@ module Planner {
     }
 
     /**
-     * Returns the distance of a given object from the arm in the given world
+     * Returns the distance of given objects from the arm in the given world
      * state.
-     * @param  {string}     objectId the object
+     * @param  {string}     firstObject   the first object
+     * @param  {string}     secondObject  the second object
      * @return {number}              the distance of the object from the arm
      */
     private distanceFromArm(firstObject: string, secondObject: string): number {
@@ -306,8 +308,9 @@ module Planner {
     }
 
     /**
-     * Returns the number of objects above a given object in the repressented world state.
-     * @param  {string}     objectId the object
+     * Returns the number of objects above given objects in the repressented world state.
+     * @param  {string}     firstObject   the first object
+     * @param  {string}     secondObject  the second object
      * @return {number}              the number of objects above the object
      */
     private objectsAbove(firstObject: string, secondObject: string): number {
@@ -387,6 +390,7 @@ module Planner {
     /**
      * Indicates whether the arm of a given world state can drop the object it
      * holds.
+     * @param  {StateNode}     node the given world state
      * @return {boolean}          true if the arm can drop the object, false
      *                            otherwise
      */
@@ -430,7 +434,14 @@ module Planner {
       }
       return true;
     }
-
+    
+    /**
+     * Returns a new edge.
+     * @param  {number}         cost the cost of the edge
+     * @param  {StateNode}      from where the edge starts
+     * @param  {StateNode}      to   where the edge ends
+     * @return {Edge<StateNode>}     the new edge
+     */
     private newEdge(cost : number, from : StateNode, to : StateNode) : Edge<StateNode> {
       var edge : Edge<StateNode> = new Edge<StateNode>();
       edge.cost = cost;
@@ -485,30 +496,19 @@ module Planner {
     interpretation: DNFFormula,
     state: WorldState
   ): string[] {
-    var time = -Date.now();
 
     var result : SearchResult<StateNode>;
     let actions: string[] = [];
     try {
-      let newResult: SearchResult<StateNode> = aStarSearch(
+      result = aStarSearch(
         new StateGraph(state),
         new StateNode(state.arm,state.holding,state.stacks),
         node => node.isGoal(interpretation),
         node => node.heuristics(interpretation),
         10
       );
-      if(result == null || newResult.cost < result.cost) {
-        result = newResult;
-      }
     } catch(err) {
-      var message : string = err.message + " :";
-      for(var a of interpretation) {
-        message += '\n';
-        for(var b of a) {
-          message += " " + b.relation + "(" + b.args + ")";
-        }
-      }
-      throw Error(message);
+      throw Error(err.message);
     }
 
     if(result != null) {
@@ -518,7 +518,6 @@ module Planner {
       actions = addDescriptions(actions, result.path, state.objects);
     }
 
-    actions.push("Time: " + (time + Date.now()));
     return actions;
   }
   /**

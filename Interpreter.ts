@@ -125,10 +125,10 @@ module Interpreter {
 
   /**
    * Indicates whether a stack is valid.
-   * @param  {WorldState} state  the world state
-   * @param  {number}     x      the id of a stack
-   * @param  {Entity}     entity an entity with which to compare stack objects
-   * @return {boolean}           true if the stack is valid, false otherwise
+   * @param  {WorldState}        state  the world state
+   * @param  {number}            x      the id of a stack
+   * @param  {Parser.Object}     object an object with which to compare stack objects
+   * @return {boolean}                  true if the stack is valid, false otherwise
    */
   function isStackValid(
     state: WorldState,
@@ -143,6 +143,15 @@ module Interpreter {
     return false;
   }
 
+  /**
+   * Indicates whether the object matches.
+   * @param  {WorldState}        state          the world state
+   * @param  {string}            stateObjectId  the id of the state object
+   * @param  {Parser.Object}     object         the object to check
+   * @param  {number}            x              the x position
+   * @param  {number}            y              the y position
+   * @return {boolean}                          true if the stack is valid, false otherwise
+   */
   function objectMatchesCommand(
     state: WorldState,
     stateObjectId: string,
@@ -152,9 +161,6 @@ module Interpreter {
   ): boolean {
     // The object in the state
     let stateObject: Parser.Object = state.objects[stateObjectId];
-
-    // The given object
-    //let commandObject: Parser.Object = entity.object;
 
     if (object.color == null && object.form == null
         && object.size == null && object.object)
@@ -173,11 +179,11 @@ module Interpreter {
 
   /**
    * Indicates whether an object is valid.
-   * @param  {WorldState} state    the world state
-   * @param  {number}     x        the id of the stack containing the object
-   * @param  {number}     y        the position of the object in the stack
-   * @param  {Entity}     entity   the entity containing the other object
-   * @return {boolean}             true if the object is valid, false otherwise
+   * @param  {WorldState}        state    the world state
+   * @param  {number}            x        the id of the stack containing the object
+   * @param  {number}            y        the position of the object in the stack
+   * @param  {Parser.Object}     object   the object to check
+   * @return {boolean}                    true if the object is valid, false otherwise
    */
   function isObjectValid(
     state: WorldState,
@@ -238,11 +244,13 @@ module Interpreter {
 
   /**
    * Indicates whether an object respects the physical laws.
-   * @param  {string}  objectId the id of the object
-   * @param  {string}  targetId the id of the potential future location of the
-   *                            object
-   * @return {boolean}          true if the object respects the physical laws,
-   *                            false otherwise
+   * @param  {Command}    cmd      the command
+   * @param  {WorldState} state    the world state.
+   * @param  {string}     objectId the id of the object
+   * @param  {string}     targetId the id of the potential future location of the
+   *                               object
+   * @return {boolean}             true if the object respects the physical laws,
+   *                               false otherwise
    */
   function physicalLaws(
     cmd: Command,

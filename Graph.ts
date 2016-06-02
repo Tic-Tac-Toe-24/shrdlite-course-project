@@ -46,7 +46,7 @@ class SearchResult<Node> {
 }
 
 
-function bidirectionalSearch<Node>(
+function biDirectionalSearch<Node>(
   graph: Graph<Node>,
   start: Node,
   goal: (n: Node) => boolean,
@@ -192,27 +192,6 @@ function bidirectionalSearch<Node>(
           openNodesStart.update(node);
         }
       }
-    }
-
-    // Searches for start, starting from the goal nodes
-    if (closedStartNodes.contains(currentGoalNode.node) && false) {
-      let path: LinkedList<Node> = new LinkedList<Node>();
-      let path2: LinkedList<Node> = new LinkedList<Node>();
-      currentGoalNode = successors.getValue(currentStartNode);
-      result.cost = currentStartNode.getGCost();
-      while (!path.contains(start)) {
-        path.add(currentStartNode.node);
-        currentStartNode = predecessors.getValue(currentStartNode);
-      }
-      do {
-        path2.add(currentGoalNode.node);
-        currentGoalNode = successors.getValue(currentGoalNode);
-        result.cost++;
-      } while (!goal(currentGoalNode.node))
-      path2.add(currentGoalNode.node);
-      result.cost++;
-      result.path = path.toArray().reverse().concat(path2.toArray());
-      break;
     }
 
     // Goes through every incoming node.
