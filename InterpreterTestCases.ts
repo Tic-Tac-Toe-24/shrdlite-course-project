@@ -124,16 +124,8 @@ module Interpreter {
      interpretations: [["ontop(j,floor)"],
                        ["ontop(j,i)", "ontop(j,a)", "ontop(b,i)", "ontop(b,a)"],
                        ["ontop(j,h)", "ontop(b,h)", "ontop(m,h)", "ontop(d,h)"]]
-    }
-    //,
-    // {world: "complex",
-    //  utterance: "put all balls left of a ball",
-    //  interpretations: [["ontop(j,floor)"],
-    //                    ["ontop(j,i)", "ontop(j,a)", "ontop(b,i)", "ontop(b,a)"],
-    //                    ["ontop(j,h)", "ontop(b,h)", "ontop(m,h)", "ontop(d,h)"]]
-    // }
-    ,
-    {world: "complex", // Objects:
+    },
+    {world: "complex",
      utterance: "put any object under all tables",
      interpretations: [["under(a,g) & under(a,h)", "under(b,g) & under(b,h)",
                        "under(c,g) & under(c,h)", "under(d,g) & under(d,h)",

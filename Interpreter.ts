@@ -303,7 +303,8 @@ module Interpreter {
    *                            of conjunctions). See the dummy interpetation
    *                            returned in the code for an example, which means
    *                            ontop(a,floor) AND holding(b).
-   * @throws                    An error when no valid interpretations can be found.
+   * @throws                    An error when no valid interpretations can be
+   *                            found.
    */
   function interpretCommand(cmd: Command, state: WorldState): DNFFormula {
     let relation: string;
@@ -336,7 +337,8 @@ module Interpreter {
             targets.push(state.stacks[x][y]);
 
       if (state.holding != null
-          && objectMatchesCommand(state, state.holding, cmd.location.entity.object)
+          && objectMatchesCommand(state, state.holding,
+              cmd.location.entity.object)
           && typeof cmd.location.entity.object.location == 'undefined')
         targets.push(state.holding);
     }
