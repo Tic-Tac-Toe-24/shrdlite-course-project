@@ -121,9 +121,22 @@ class PutAnyToAllStrategy implements InterpretationStrategy {
     action: string,
     physicalLaws: (objectId: string, targetId: string) => boolean
   ): DNFFormula {
-    // TODO Change this!
-    return new PutAllToAnyStrategy()
-        .getInterpretation(objects, targets, action, physicalLaws);
+    let interpretation: DNFFormula = [];
+
+    for (let object of objects) {
+      let currentConjunction: Conjunction = [];
+
+      for (let target of targets) {
+        if (physicalLaws(object, target))
+          currentConjunction.push({polarity: true, relation: action,
+              args: [object, target]});
+      }
+
+      if (currentConjunction.length == targets.length)
+        interpretation.push(currentConjunction);
+    }
+
+    return interpretation;
   }
 }
 
@@ -164,6 +177,7 @@ function getInterpretationStrategy(cmd: Command): InterpretationStrategy {
   } else {
     let entityQuantifier: string = cmd.entity.quantifier;
     let locationQuantifier: string = cmd.location.entity.quantifier;
+    let relation: string = cmd.location.relation;
 
     if (entityQuantifier == 'all'
         && (locationQuantifier == 'the' || locationQuantifier == 'any')) {
@@ -174,6 +188,8 @@ function getInterpretationStrategy(cmd: Command): InterpretationStrategy {
     } else if (entityQuantifier == 'all' && locationQuantifier == 'all') {
       return new PutAllToAllStrategy();
     } else if (entityQuantifier == 'any' && locationQuantifier == 'all') {
+      if (relation == 'leftof' || relation == 'rightof' || relation == 'inside')
+        return new PutAllToAnyStrategy();
       return new PutAnyToAllStrategy();
     }
 

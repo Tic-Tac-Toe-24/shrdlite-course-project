@@ -124,12 +124,23 @@ module Interpreter {
      interpretations: [["ontop(j,floor)"],
                        ["ontop(j,i)", "ontop(j,a)", "ontop(b,i)", "ontop(b,a)"],
                        ["ontop(j,h)", "ontop(b,h)", "ontop(m,h)", "ontop(d,h)"]]
-    },
-    {world: "complex",
-     utterance: "put all balls left of a ball",
-     interpretations: [["ontop(j,floor)"],
-                       ["ontop(j,i)", "ontop(j,a)", "ontop(b,i)", "ontop(b,a)"],
-                       ["ontop(j,h)", "ontop(b,h)", "ontop(m,h)", "ontop(d,h)"]]
+    }
+    //,
+    // {world: "complex",
+    //  utterance: "put all balls left of a ball",
+    //  interpretations: [["ontop(j,floor)"],
+    //                    ["ontop(j,i)", "ontop(j,a)", "ontop(b,i)", "ontop(b,a)"],
+    //                    ["ontop(j,h)", "ontop(b,h)", "ontop(m,h)", "ontop(d,h)"]]
+    // }
+    ,
+    {world: "complex", // Objects:
+     utterance: "put any object under all tables",
+     interpretations: [["under(a,g) & under(a,h)", "under(b,g) & under(b,h)",
+                       "under(c,g) & under(c,h)", "under(d,g) & under(d,h)",
+                       "under(e,g) & under(e,h)", "under(f,g) & under(f,h)",
+                       "under(i,g) & under(i,h)", "under(j,g) & under(j,h)",
+                       "under(k,g) & under(k,h)", "under(l,g) & under(l,h)",
+                       "under(m,g) & under(m,h)"]]
     }
    );
 }
